@@ -9,14 +9,12 @@ import (
 	"github.com/touka-aoi/paralle-vs-single/application/state"
 )
 
-// ConcurrentStore は Store をラップし、排他制御付きで InteractionState を実装する。
 type ConcurrentStore struct {
 	base *Store
 	clk  func() time.Time
 	mu   sync.RWMutex
 }
 
-// NewConcurrentStore は新しい ConcurrentStore を生成する。
 func NewConcurrentStore(base *Store) *ConcurrentStore {
 	return &ConcurrentStore{
 		base: base,
@@ -24,7 +22,6 @@ func NewConcurrentStore(base *Store) *ConcurrentStore {
 	}
 }
 
-// WithClock はテスト用に時間ソースを差し替える。
 func (c *ConcurrentStore) WithClock(clock func() time.Time) *ConcurrentStore {
 	if clock != nil {
 		c.clk = clock

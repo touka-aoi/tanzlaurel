@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/touka-aoi/paralle-vs-single/application/domain"
 	"github.com/touka-aoi/paralle-vs-single/application/request"
@@ -71,9 +72,9 @@ func (SimpleValidator) Trade(req request.Trade) error {
 }
 
 func finiteVec(v domain.Vec2) bool {
-	return !(isNaN(v.X) || isNaN(v.Y))
+	return !(isFinite(v.X) || isFinite(v.Y))
 }
 
-func isNaN(f float64) bool {
-	return f != f
+func isFinite(f float64) bool {
+	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }

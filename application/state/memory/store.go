@@ -13,15 +13,12 @@ var (
 	ErrRoomNotFound   = errors.New("memory: room not found")
 )
 
-// Store はインメモリのプレイヤー・ルーム状態を保持する共通ストレージ。
-// 並行実装・単一ループ実装は本ストアをラップして利用し、ロック戦略のみを差し替える。
 type Store struct {
 	players   map[string]*domain.PlayerSnapshot
 	rooms     map[string]*domain.RoomSnapshot
 	roomStats map[string]*domain.RoomStats
 }
 
-// NewStore は初期状態をコピーしつつストアを生成する。
 func NewStore(players []domain.PlayerSnapshot, rooms []domain.RoomSnapshot) *Store {
 	store := &Store{
 		players:   make(map[string]*domain.PlayerSnapshot, len(players)),
@@ -52,7 +49,6 @@ func (s *Store) applyMove(cmd domain.MoveCommand, ts time.Time) (domain.MoveResu
 	return domain.MoveResult{Player: copyPlayer(player)}, nil
 }
 
-// tsを受け取るのはこの関数がstoreすることのみに集中するため
 func (s *Store) applyBuff(cmd domain.BuffCommand, ts time.Time) (domain.BuffResult, error) {
 	room, err := s.getRoom(cmd.RoomID)
 	if err != nil {

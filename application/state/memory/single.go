@@ -8,8 +8,6 @@ import (
 	"github.com/touka-aoi/paralle-vs-single/application/state"
 )
 
-// SingleThreadStore は単一ループ実装向けの軽量アダプタ。
-// 呼び出し側がイベントループ専用ゴルーチンであることを前提にロックを行わない。
 type SingleThreadStore struct {
 	base *Store
 	clk  func() time.Time
