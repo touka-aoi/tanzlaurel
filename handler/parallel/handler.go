@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/touka-aoi/paralle-vs-single/application/request"
 	"github.com/touka-aoi/paralle-vs-single/application/service"
+	"github.com/touka-aoi/paralle-vs-single/handler"
 )
 
 type Handler struct {
@@ -19,7 +19,7 @@ func NewHandler(svc *service.InteractionService) *Handler {
 }
 
 func (h *Handler) HandleMove(w http.ResponseWriter, r *http.Request) {
-	var payload request.Move
+	var payload handler.MovePayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		httpError(w, http.StatusBadRequest, err)
 		return
@@ -34,7 +34,7 @@ func (h *Handler) HandleMove(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleBuff(w http.ResponseWriter, r *http.Request) {
-	var payload request.Buff
+	var payload handler.BuffPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		httpError(w, http.StatusBadRequest, err)
 		return
@@ -49,7 +49,7 @@ func (h *Handler) HandleBuff(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleAttack(w http.ResponseWriter, r *http.Request) {
-	var payload request.Attack
+	var payload handler.AttackPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		httpError(w, http.StatusBadRequest, err)
 		return
@@ -64,7 +64,7 @@ func (h *Handler) HandleAttack(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleTrade(w http.ResponseWriter, r *http.Request) {
-	var payload request.Trade
+	var payload handler.TradePayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		httpError(w, http.StatusBadRequest, err)
 		return
