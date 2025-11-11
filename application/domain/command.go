@@ -9,51 +9,43 @@ type Vec2 struct {
 }
 
 // BuffEffect はバフ効果の識別子と量、持続時間を表す。
-type BuffEffect struct {
-	EffectID  string
-	Magnitude float64
-	Duration  time.Duration
-	Tags      []string
+type Buff struct {
+	BuffID   string
+	Value    float64
+	Duration time.Duration
 }
 
 // ItemChange はインベントリの増減を表すドメイン値オブジェクト。
 type ItemChange struct {
 	ItemID        string
 	QuantityDelta int
-	Metadata      map[string]string
 }
 
 // MoveCommand は移動処理に必要なドメインコマンド。
 type MoveCommand struct {
-	ActorID      string
-	RoomID       string
+	UserID       string
 	NextPosition Vec2
-	Facing       float64
+	Facing       float64 // 向き
 }
 
 // BuffCommand はバフ適用処理のドメインコマンド。
 type BuffCommand struct {
-	CasterID  string
-	RoomID    string
+	UserID    string
 	TargetIDs []string
-	Effect    BuffEffect
+	Buff      Buff
 }
 
 // AttackCommand は攻撃処理のドメインコマンド。
 type AttackCommand struct {
-	AttackerID        string
-	TargetID          string
-	RoomID            string
-	SkillID           string
-	Damage            int
-	AdditionalEffects []string
+	UserID   string
+	TargetID string
+	Damage   int
 }
 
 // TradeCommand はトレード処理のドメインコマンド。
 type TradeCommand struct {
-	InitiatorID          string
+	UserID               string
 	PartnerID            string
-	RoomID               string
 	Offer                []ItemChange
 	Request              []ItemChange
 	RequiresConfirmation bool
