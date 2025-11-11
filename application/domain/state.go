@@ -5,11 +5,8 @@ import "time"
 // PlayerSnapshot はアプリケーションが扱うプレイヤーの状態。
 type PlayerSnapshot struct {
 	PlayerID string
-	RoomID   string
-
 	Position Vec2
 	Health   int
-	Energy   int
 
 	ActiveBuffs []ActiveBuff
 	Inventory   []InventoryEntry
@@ -19,7 +16,7 @@ type PlayerSnapshot struct {
 
 // ActiveBuff はプレイヤーに付与されているバフと有効期限。
 type ActiveBuff struct {
-	Effect    BuffEffect
+	Buff      Buff
 	ExpiresAt time.Time
 }
 
@@ -31,10 +28,8 @@ type InventoryEntry struct {
 
 // RoomSnapshot はルーム全体の状態。
 type RoomSnapshot struct {
-	RoomID string
-
-	MemberIDs []string
-
+	RoomID      string
+	MemberIDs   []string
 	LastUpdated time.Time
 }
 

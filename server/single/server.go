@@ -1,4 +1,4 @@
-package transport
+package single
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/touka-aoi/paralle-vs-single/application/request"
 	"github.com/touka-aoi/paralle-vs-single/application/service"
 	appstate "github.com/touka-aoi/paralle-vs-single/application/state"
-	"github.com/touka-aoi/paralle-vs-single/single/internal/loop"
+	"github.com/touka-aoi/paralle-vs-single/internal/handler"
 )
 
 // Dependencies describes collaborators required by the single-loop transport.
@@ -58,19 +58,19 @@ func (h *loopHandler) Handle(req interface{}) error {
 
 // LoopRunner provides an entry point for the event loop.
 type LoopRunner struct {
-    Loop *loop.Loop
+	Loop *handler.Loop
 }
 
 // Submit enqueues a decoded request to the loop.
 func (r *LoopRunner) Submit(ctx context.Context, req LoopRequest) error {
-    return r.Loop.Submit(ctx, req)
+	return r.Loop.Submit(ctx, req)
 }
 
 // NewLoopRunner constructs loop and handler wiring.
-func NewLoopRunner(cfg loop.Config, deps Dependencies) (*LoopRunner, error) {
+func NewLoopRunner(cfg handler.Config, deps Dependencies) (*LoopRunner, error) {
 	handler := &loopHandler{svc: deps.Service}
 	cfg.Handler = handler
-	l, err := loop.New(cfg)
+	l, err := handler.New(cfg)
 	if err != nil {
 		return nil, err
 	}

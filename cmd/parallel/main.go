@@ -12,8 +12,8 @@ import (
 	"github.com/touka-aoi/paralle-vs-single/application/domain"
 	"github.com/touka-aoi/paralle-vs-single/application/service"
 	appstate "github.com/touka-aoi/paralle-vs-single/application/state"
-	parallelstate "github.com/touka-aoi/paralle-vs-single/parallel/internal/state"
-	transporthttp "github.com/touka-aoi/paralle-vs-single/parallel/internal/transport/http"
+	parallelstate "github.com/touka-aoi/paralle-vs-single/server/parallel/internal/state"
+	transporthttp "github.com/touka-aoi/paralle-vs-single/server/parallel/internal/transport/http"
 )
 
 func main() {
@@ -41,9 +41,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("parallel server listening on %s", *addr)
+		log.Printf("parallel single listening on %s", *addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http server error: %v", err)
+			log.Fatalf("http single error: %v", err)
 		}
 	}()
 

@@ -15,9 +15,9 @@ import (
 	"github.com/touka-aoi/paralle-vs-single/application/domain"
 	"github.com/touka-aoi/paralle-vs-single/application/service"
 	appstate "github.com/touka-aoi/paralle-vs-single/application/state"
-	"github.com/touka-aoi/paralle-vs-single/single/internal/loop"
-	singlestate "github.com/touka-aoi/paralle-vs-single/single/internal/state"
-	singletransport "github.com/touka-aoi/paralle-vs-single/single/internal/transport"
+	"github.com/touka-aoi/paralle-vs-single/server/single/internal/loop"
+	singlestate "github.com/touka-aoi/paralle-vs-single/server/single/internal/state"
+	singletransport "github.com/touka-aoi/paralle-vs-single/server/single/internal/transport"
 )
 
 func main() {
@@ -53,7 +53,7 @@ func main() {
 
 	go func() {
 		if err := listenAndServe(ctx, *addr, loopRunner); err != nil {
-			log.Printf("server error: %v", err)
+			log.Printf("single error: %v", err)
 			cancel()
 		}
 	}()
@@ -75,7 +75,7 @@ func listenAndServe(ctx context.Context, addr string, runner *singletransport.Lo
 	}
 	defer ln.Close()
 
-	log.Printf("single-loop server listening on %s", addr)
+	log.Printf("single-loop single listening on %s", addr)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
