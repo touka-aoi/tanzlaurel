@@ -29,6 +29,38 @@ func NewStore() *Store {
 	return store
 }
 
+// NewStoreWithSnapshots は初期プレイヤー・ルーム情報を基に Store を構築する。
+func NewStoreWithSnapshots(players []domain.PlayerSnapshot, rooms []domain.RoomSnapshot) *Store {
+	store := NewStore()
+	store.LoadSnapshots(players, rooms)
+	return store
+}
+
+// LoadSnapshots は既存状態を破棄し、渡されたスナップショットで再初期化する。
+func (s *Store) LoadSnapshots(players []domain.PlayerSnapshot, rooms []domain.RoomSnapshot) {
+	s.players = make(map[string]*domain.PlayerSnapshot, len(players))
+	for i := range players {
+		p := players[i]
+		if p.PlayerID == "" {
+			continue
+		}
+		playerCopy := p
+		s.players[p.PlayerID] = &playerCopy
+	}
+
+	s.rooms = make(map[string]*domain.RoomSnapshot, len(rooms))
+	s.roomStats = make(map[string]*domain.RoomStats, len(rooms))
+	for i := range rooms {
+		r := rooms[i]
+		if r.RoomID == "" {
+			continue
+		}
+		roomCopy := r
+		s.rooms[r.RoomID] = &roomCopy
+		s.roomStats[r.RoomID] = s.computeRoomStats(&roomCopy)
+	}
+}
+
 func (s *Store) applyMove(cmd *state.Move, ts time.Time) (*domain.MoveResult, error) {
 	player, err := s.getPlayer(cmd.UserID)
 	if err != nil {
