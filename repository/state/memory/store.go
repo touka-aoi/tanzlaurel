@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/touka-aoi/paralle-vs-single/application/domain"
+	"github.com/touka-aoi/paralle-vs-single/domain"
+	"github.com/touka-aoi/paralle-vs-single/repository/state"
 )
 
 var (
@@ -19,44 +20,33 @@ type Store struct {
 	roomStats map[string]*domain.RoomStats
 }
 
-func NewStore(players []domain.PlayerSnapshot, rooms []domain.RoomSnapshot) *Store {
+func NewStore() *Store {
 	store := &Store{
-		players:   make(map[string]*domain.PlayerSnapshot, len(players)),
-		rooms:     make(map[string]*domain.RoomSnapshot, len(rooms)),
-		roomStats: make(map[string]*domain.RoomStats, len(rooms)),
-	}
-	for i := range players {
-		p := players[i]
-		store.players[p.PlayerID] = clonePlayerPtr(&p)
-	}
-	for i := range rooms {
-		r := rooms[i]
-		store.rooms[r.RoomID] = cloneRoomPtr(&r)
-	}
-	for _, room := range store.rooms {
-		store.roomStats[room.RoomID] = store.computeRoomStats(room)
+		players:   make(map[string]*domain.PlayerSnapshot),
+		rooms:     make(map[string]*domain.RoomSnapshot),
+		roomStats: make(map[string]*domain.RoomStats),
 	}
 	return store
 }
 
-func (s *Store) applyMove(cmd domain.MoveCommand, ts time.Time) (domain.MoveResult, error) {
-	player, err := s.getPlayer(cmd.ActorID)
+func (s *Store) applyMove(cmd *state.Move, ts time.Time) (*domain.MoveResult, error) {
+	player, err := s.getPlayer(cmd.UserID)
 	if err != nil {
-		return domain.MoveResult{}, err
+		return nil, err
 	}
 	player.Position = cmd.NextPosition
 	player.LastUpdated = ts
-	return domain.MoveResult{Player: copyPlayer(player)}, nil
+	return &domain.MoveResult{Player: copyPlayer(player)}, nil
 }
 
-func (s *Store) applyBuff(cmd domain.BuffCommand, ts time.Time) (domain.BuffResult, error) {
+func (s *Store) applyBuff(cmd *state.Buff, ts time.Time) (*domain.BuffResult, error) {
 	room, err := s.getRoom(cmd.RoomID)
 	if err != nil {
-		return domain.BuffResult{}, err
+		return nil, err
 	}
 	stats, err := s.statsForRoom(room)
 	if err != nil {
-		return domain.BuffResult{}, err
+		return nil, err
 	}
 	targetIDs := cmd.TargetIDs
 	if len(targetIDs) == 0 {
@@ -67,11 +57,11 @@ func (s *Store) applyBuff(cmd domain.BuffCommand, ts time.Time) (domain.BuffResu
 	for _, id := range targetIDs {
 		player, err := s.getPlayer(id)
 		if err != nil {
-			return domain.BuffResult{}, err
+			return nil, err
 		}
 		buff := domain.ActiveBuff{
-			Effect:    cmd.Effect,
-			ExpiresAt: ts.Add(cmd.Effect.Duration),
+			Buff:      cmd.Buff,
+			ExpiresAt: ts.Add(cmd.Buff.Duration),
 		}
 		player.ActiveBuffs = append(player.ActiveBuffs, buff)
 		player.LastUpdated = ts
@@ -79,33 +69,33 @@ func (s *Store) applyBuff(cmd domain.BuffCommand, ts time.Time) (domain.BuffResu
 	}
 
 	room.LastUpdated = ts
-	stats.ActiveBuffHistogram[cmd.Effect.EffectID] += len(affected)
+	stats.ActiveBuffHistogram[cmd.Buff.BuffID] += len(affected)
 	stats.InteractionCount += len(affected)
 	stats.LastUpdated = ts
 
-	return domain.BuffResult{
+	return &domain.BuffResult{
 		AffectedPlayers: affected,
 		Room:            copyRoom(room),
 		Stats:           copyRoomStats(stats),
 	}, nil
 }
 
-func (s *Store) applyAttack(cmd domain.AttackCommand, ts time.Time) (domain.AttackResult, error) {
-	attacker, err := s.getPlayer(cmd.AttackerID)
+func (s *Store) applyAttack(cmd *state.Attack, ts time.Time) (*domain.AttackResult, error) {
+	attacker, err := s.getPlayer(cmd.UserID)
 	if err != nil {
-		return domain.AttackResult{}, err
+		return nil, err
 	}
 	target, err := s.getPlayer(cmd.TargetID)
 	if err != nil {
-		return domain.AttackResult{}, err
+		return nil, err
 	}
 	room, err := s.getRoom(cmd.RoomID)
 	if err != nil {
-		return domain.AttackResult{}, err
+		return nil, err
 	}
 	stats, err := s.statsForRoom(room)
 	if err != nil {
-		return domain.AttackResult{}, err
+		return nil, err
 	}
 
 	target.Health -= cmd.Damage
@@ -119,10 +109,9 @@ func (s *Store) applyAttack(cmd domain.AttackCommand, ts time.Time) (domain.Atta
 	room.LastUpdated = ts
 	stats.InteractionCount++
 	stats.TotalHealth = s.recomputeTotalHealth(room)
-	stats.AverageEnergy = s.recomputeAverageEnergy(room)
 	stats.LastUpdated = ts
 
-	return domain.AttackResult{
+	return &domain.AttackResult{
 		Attacker: copyPlayer(attacker),
 		Target:   copyPlayer(target),
 		Room:     copyRoom(room),
@@ -130,31 +119,31 @@ func (s *Store) applyAttack(cmd domain.AttackCommand, ts time.Time) (domain.Atta
 	}, nil
 }
 
-func (s *Store) applyTrade(cmd domain.TradeCommand, ts time.Time) (domain.TradeResult, error) {
-	initiator, err := s.getPlayer(cmd.InitiatorID)
+func (s *Store) applyTrade(cmd *state.Trade, ts time.Time) (*domain.TradeResult, error) {
+	initiator, err := s.getPlayer(cmd.UserID)
 	if err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	partner, err := s.getPlayer(cmd.PartnerID)
 	if err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	room, err := s.getRoom(cmd.RoomID)
 	if err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 
 	if err := applyInventoryChanges(initiator, cmd.Offer, -1); err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	if err := applyInventoryChanges(partner, cmd.Request, -1); err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	if err := applyInventoryChanges(initiator, cmd.Request, +1); err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	if err := applyInventoryChanges(partner, cmd.Offer, +1); err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 
 	initiator.LastUpdated = ts
@@ -163,12 +152,12 @@ func (s *Store) applyTrade(cmd domain.TradeCommand, ts time.Time) (domain.TradeR
 	room.LastUpdated = ts
 	stats, err := s.statsForRoom(room)
 	if err != nil {
-		return domain.TradeResult{}, err
+		return nil, err
 	}
 	stats.InteractionCount++
 	stats.LastUpdated = ts
 
-	return domain.TradeResult{
+	return &domain.TradeResult{
 		Initiator: copyPlayer(initiator),
 		Partner:   copyPlayer(partner),
 		Ledger: domain.TradeLedger{
@@ -206,34 +195,6 @@ func (s *Store) recomputeTotalHealth(room *domain.RoomSnapshot) int {
 	return total
 }
 
-func (s *Store) recomputeAverageEnergy(room *domain.RoomSnapshot) float64 {
-	if len(room.MemberIDs) == 0 {
-		return 0
-	}
-	sum := 0
-	count := 0
-	for _, id := range room.MemberIDs {
-		if player, ok := s.players[id]; ok {
-			sum += player.Energy
-			count++
-		}
-	}
-	if count == 0 {
-		return 0
-	}
-	return float64(sum) / float64(count)
-}
-
-func clonePlayerPtr(src *domain.PlayerSnapshot) *domain.PlayerSnapshot {
-	if src == nil {
-		return nil
-	}
-	cp := *src
-	cp.ActiveBuffs = append([]domain.ActiveBuff(nil), src.ActiveBuffs...)
-	cp.Inventory = append([]domain.InventoryEntry(nil), src.Inventory...)
-	return &cp
-}
-
 func copyPlayer(src *domain.PlayerSnapshot) domain.PlayerSnapshot {
 	if src == nil {
 		return domain.PlayerSnapshot{}
@@ -242,15 +203,6 @@ func copyPlayer(src *domain.PlayerSnapshot) domain.PlayerSnapshot {
 	cp.ActiveBuffs = append([]domain.ActiveBuff(nil), src.ActiveBuffs...)
 	cp.Inventory = append([]domain.InventoryEntry(nil), src.Inventory...)
 	return cp
-}
-
-func cloneRoomPtr(src *domain.RoomSnapshot) *domain.RoomSnapshot {
-	if src == nil {
-		return nil
-	}
-	cp := *src
-	cp.MemberIDs = append([]string(nil), src.MemberIDs...)
-	return &cp
 }
 
 func copyRoom(src *domain.RoomSnapshot) domain.RoomSnapshot {
@@ -268,12 +220,11 @@ func (s *Store) computeRoomStats(room *domain.RoomSnapshot) *domain.RoomStats {
 		ActiveBuffHistogram: make(map[string]int),
 	}
 	stats.TotalHealth = s.recomputeTotalHealth(room)
-	stats.AverageEnergy = s.recomputeAverageEnergy(room)
 	stats.LastUpdated = room.LastUpdated
 	for _, id := range room.MemberIDs {
 		if player, ok := s.players[id]; ok {
 			for _, buff := range player.ActiveBuffs {
-				stats.ActiveBuffHistogram[buff.Effect.EffectID]++
+				stats.ActiveBuffHistogram[buff.Buff.BuffID]++
 			}
 		}
 	}

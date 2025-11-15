@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/touka-aoi/paralle-vs-single/application/domain"
-	"github.com/touka-aoi/paralle-vs-single/application/state"
+	"github.com/touka-aoi/paralle-vs-single/domain"
+	"github.com/touka-aoi/paralle-vs-single/repository/state"
 )
 
 type ConcurrentStore struct {
@@ -29,28 +29,28 @@ func (c *ConcurrentStore) WithClock(clock func() time.Time) *ConcurrentStore {
 	return c
 }
 
-func (c *ConcurrentStore) ApplyMove(ctx context.Context, cmd domain.MoveCommand) (domain.MoveResult, error) {
+func (c *ConcurrentStore) ApplyMove(ctx context.Context, cmd *state.Move) (*domain.MoveResult, error) {
 	_ = ctx
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.base.applyMove(cmd, c.now())
 }
 
-func (c *ConcurrentStore) ApplyBuff(ctx context.Context, cmd domain.BuffCommand) (domain.BuffResult, error) {
+func (c *ConcurrentStore) ApplyBuff(ctx context.Context, cmd *state.Buff) (*domain.BuffResult, error) {
 	_ = ctx
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.base.applyBuff(cmd, c.now())
 }
 
-func (c *ConcurrentStore) ApplyAttack(ctx context.Context, cmd domain.AttackCommand) (domain.AttackResult, error) {
+func (c *ConcurrentStore) ApplyAttack(ctx context.Context, cmd *state.Attack) (*domain.AttackResult, error) {
 	_ = ctx
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.base.applyAttack(cmd, c.now())
 }
 
-func (c *ConcurrentStore) ApplyTrade(ctx context.Context, cmd domain.TradeCommand) (domain.TradeResult, error) {
+func (c *ConcurrentStore) ApplyTrade(ctx context.Context, cmd *state.Trade) (*domain.TradeResult, error) {
 	_ = ctx
 	c.mu.Lock()
 	defer c.mu.Unlock()

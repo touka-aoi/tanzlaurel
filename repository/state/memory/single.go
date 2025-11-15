@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/touka-aoi/paralle-vs-single/application/domain"
-	"github.com/touka-aoi/paralle-vs-single/application/state"
+	"github.com/touka-aoi/paralle-vs-single/domain"
+	"github.com/touka-aoi/paralle-vs-single/repository/state"
 )
 
 type SingleThreadStore struct {
@@ -27,22 +27,22 @@ func (s *SingleThreadStore) WithClock(clock func() time.Time) *SingleThreadStore
 	return s
 }
 
-func (s *SingleThreadStore) ApplyMove(ctx context.Context, cmd domain.MoveCommand) (domain.MoveResult, error) {
+func (s *SingleThreadStore) ApplyMove(ctx context.Context, cmd *state.Move) (*domain.MoveResult, error) {
 	_ = ctx
 	return s.base.applyMove(cmd, s.now())
 }
 
-func (s *SingleThreadStore) ApplyBuff(ctx context.Context, cmd domain.BuffCommand) (domain.BuffResult, error) {
+func (s *SingleThreadStore) ApplyBuff(ctx context.Context, cmd *state.Buff) (*domain.BuffResult, error) {
 	_ = ctx
 	return s.base.applyBuff(cmd, s.now())
 }
 
-func (s *SingleThreadStore) ApplyAttack(ctx context.Context, cmd domain.AttackCommand) (domain.AttackResult, error) {
+func (s *SingleThreadStore) ApplyAttack(ctx context.Context, cmd *state.Attack) (*domain.AttackResult, error) {
 	_ = ctx
 	return s.base.applyAttack(cmd, s.now())
 }
 
-func (s *SingleThreadStore) ApplyTrade(ctx context.Context, cmd domain.TradeCommand) (domain.TradeResult, error) {
+func (s *SingleThreadStore) ApplyTrade(ctx context.Context, cmd *state.Trade) (*domain.TradeResult, error) {
 	_ = ctx
 	return s.base.applyTrade(cmd, s.now())
 }

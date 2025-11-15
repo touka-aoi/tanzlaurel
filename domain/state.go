@@ -5,6 +5,7 @@ import "time"
 // PlayerSnapshot はアプリケーションが扱うプレイヤーの状態。
 type PlayerSnapshot struct {
 	PlayerID string
+	RoomID   string
 	Position Vec2
 	Health   int
 
