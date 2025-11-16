@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -41,17 +42,20 @@ func main() {
 			log.Fatalf("http single error: %v", err)
 		}
 	}()
+	slog.InfoContext(ctx, "server listening", "addr", s.Addr)
 	<-ctx.Done()
+	slog.InfoContext(ctx, "shutdown initiated")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := s.Shutdown(shutdownCtx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
+		slog.ErrorContext(ctx, "graceful shutdown failed", "error", err)
 		if err := s.Close(); err != nil {
-			log.Printf("forced close failed: %v", err)
+			slog.ErrorContext(ctx, "forced close failed", "error", err)
 		}
 	}
+	slog.InfoContext(ctx, "server shutdown complete")
 }
 
 func buildState() state.InteractionState {
@@ -61,14 +65,14 @@ func buildState() state.InteractionState {
 
 func seedPlayers() []domain.PlayerSnapshot {
 	return []domain.PlayerSnapshot{
-		{PlayerID: "player-1", RoomID: "room-1"},
-		{PlayerID: "player-2", RoomID: "room-1"},
+		{PlayerID: "player-1", RoomID: "1"},
+		{PlayerID: "player-2", RoomID: "1"},
 	}
 }
 
 func seedRooms() []domain.RoomSnapshot {
 	return []domain.RoomSnapshot{
-		{RoomID: "room-1", MemberIDs: []string{"player-1", "player-2"}},
+		{RoomID: "1", MemberIDs: []string{"player-1", "player-2"}},
 	}
 }
 
