@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 
 	"github.com/touka-aoi/paralle-vs-single/handler"
 	"github.com/touka-aoi/paralle-vs-single/service"
@@ -20,71 +21,103 @@ const (
 	scopeBroadcast = "broadcast"
 )
 
-// Handler は WebSocket 経由で受信したフレームをサービス層へ橋渡しし、
-// ハイインタラクションなイベントはブロードキャストで全クライアントへ配信する。
+type RoomID string
+type ClientID string
+type ClientSet map[*wsClient]struct{}
+
+func (c ClientSet) Add(client *wsClient) {
+	c[client] = struct{}{}
+}
+
+func (c ClientSet) Remove(client *wsClient) {
+	delete(c, client)
+}
+
 type Handler struct {
 	svc     *service.InteractionService
 	mu      sync.RWMutex
-	clients map[*wsClient]struct{}
+	clients map[*wsClient]*clientInfo
+	rooms   map[RoomID]ClientSet
 }
 
-// wsClient は送受信を独立ループで処理するための接続ラッパー。
+type clientInfo struct {
+	roomID string
+}
+
 type wsClient struct {
-	conn *websocket.Conn
-	send chan outboundFrame
+	id        ClientID
+	conn      *websocket.Conn
+	send      chan *outboundFrame
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+func (c *wsClient) closeChannels() {
+	c.closeOnce.Do(func() {
+		close(c.send)
+		close(c.done)
+	})
 }
 
 // NewHandler は依存するサービスを受け取り、WebSocket ハンドラを構築する。
 func NewHandler(svc *service.InteractionService) *Handler {
-	return &Handler{
+	h := &Handler{
 		svc:     svc,
-		clients: make(map[*wsClient]struct{}),
+		clients: make(map[*wsClient]*clientInfo),
+		rooms:   make(map[RoomID]ClientSet),
 	}
+	//NOTE: テスト用のためroom1を作成
+	h.rooms[RoomID("1")] = make(ClientSet)
+	return h
 }
 
-// ServeHTTP は WebSocket へアップグレードし、受信・送信ループを分離して開始する。
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+	ctx := r.Context()
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		log.Printf("parallel ws: accept error: %v", err)
+		slog.ErrorContext(ctx, "failed to accept websocket connection: %v", err)
 		return
 	}
 	client := &wsClient{
+		id:   ClientID(uuid.NewString()),
 		conn: conn,
-		send: make(chan outboundFrame, 64),
+		send: make(chan *outboundFrame, 512),
+		done: make(chan struct{}),
 	}
+
 	h.addClient(client)
-	ctx := r.Context()
-	go h.writeLoop(ctx, client)
-	h.readLoop(ctx, client)
+
+	//NOTE: テスト用のためクライアントはすべてルーム1に行く
+	h.assignRoom(client, "1")
+
+	wg := sync.WaitGroup{}
+	wg.Go(func() { h.writeLoop(ctx, client) })
+	wg.Go(func() { h.readLoop(ctx, client) })
+	wg.Wait()
 }
 
 func (h *Handler) readLoop(ctx context.Context, client *wsClient) {
 	defer func() {
 		h.removeClient(client)
-		client.conn.Close(websocket.StatusNormalClosure, "")
+		_ = client.conn.Close(websocket.StatusNormalClosure, "")
 	}()
 	for {
 		msgType, data, err := client.conn.Read(ctx)
 		if err != nil {
 			status := websocket.CloseStatus(err)
 			if status != websocket.StatusNormalClosure && status != websocket.StatusGoingAway {
-				log.Printf("parallel ws: read error: %v", err)
+				slog.ErrorContext(ctx, "failed to read websocket message: %v", err)
 			}
 			return
 		}
 		if msgType != websocket.MessageText {
-			h.sendToClient(client, outboundFrame{Scope: scopeAck, Error: "invalid message type"})
+			h.sendToClient(client, &outboundFrame{Scope: scopeAck, Error: "invalid message type"})
 			continue
 		}
-		resp, broadcasts := h.handleFrame(ctx, data)
+		resp, roomID, broadcastFrame := h.handleFrame(ctx, data)
 		h.sendToClient(client, resp)
-		if len(broadcasts) > 0 {
-			h.broadcast(broadcasts)
+		if broadcastFrame != nil {
+			h.broadcast(roomID, broadcastFrame, client)
 		}
 	}
 }
@@ -100,11 +133,11 @@ func (h *Handler) writeLoop(ctx context.Context, client *wsClient) {
 			}
 			data, err := json.Marshal(msg)
 			if err != nil {
-				log.Printf("parallel ws: marshal error: %v", err)
+				slog.ErrorContext(ctx, "parallel ws: marshal error", "error", err)
 				continue
 			}
 			if err := client.conn.Write(ctx, websocket.MessageText, data); err != nil {
-				log.Printf("parallel ws: write error: %v", err)
+				slog.ErrorContext(ctx, "parallel ws: write error", "error", err)
 				return
 			}
 		}
@@ -114,35 +147,47 @@ func (h *Handler) writeLoop(ctx context.Context, client *wsClient) {
 func (h *Handler) addClient(client *wsClient) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.clients[client] = struct{}{}
+	h.clients[client] = &clientInfo{}
 }
 
 func (h *Handler) removeClient(client *wsClient) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	info := h.clients[client]
+	if info != nil && info.roomID != "" {
+		h.removeRoomLocked(client, info.roomID)
+	}
 	delete(h.clients, client)
-	close(client.send)
+	h.mu.Unlock()
+	client.closeChannels()
 }
 
-func (h *Handler) sendToClient(client *wsClient, frame outboundFrame) {
+func (h *Handler) sendToClient(client *wsClient, frame *outboundFrame) {
 	select {
+	case <-client.done:
+		return
 	case client.send <- frame:
-	default:
-		log.Printf("parallel ws: dropping message to client (buffer full)")
+		return
 	}
 }
 
-func (h *Handler) broadcast(frames []outboundFrame) {
+func (h *Handler) broadcast(roomID string, frame *outboundFrame, exclude *wsClient) {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for client := range h.clients {
-		for _, frame := range frames {
-			select {
-			case client.send <- frame:
-			default:
-				log.Printf("parallel ws: dropping broadcast to client (buffer full)")
-			}
+	members := h.rooms[RoomID(roomID)]
+	targets := make([]*wsClient, 0, len(members))
+	for client := range members {
+		if client == exclude {
+			continue
 		}
+		targets = append(targets, client)
+	}
+	h.mu.RUnlock()
+	for _, target := range targets {
+		select {
+		case <-target.done:
+			break
+		default:
+		}
+		target.send <- frame
 	}
 }
 
@@ -154,63 +199,72 @@ type inboundFrame struct {
 type outboundFrame struct {
 	Type   string      `json:"type"`
 	Scope  string      `json:"scope"`
+	RoomID string      `json:"roomId,omitempty"`
 	Result interface{} `json:"result,omitempty"`
 	Error  string      `json:"error,omitempty"`
 }
 
-func (h *Handler) handleFrame(ctx context.Context, data []byte) (outboundFrame, []outboundFrame) {
+func (h *Handler) handleFrame(ctx context.Context, data []byte) (*outboundFrame, string, *outboundFrame) {
 	var frame inboundFrame
 	if err := json.Unmarshal(data, &frame); err != nil {
-		return outboundFrame{Scope: scopeAck, Error: fmt.Sprintf("invalid frame: %v", err)}, nil
+		return &outboundFrame{Scope: scopeAck, Error: fmt.Sprintf("invalid frame: %v", err)}, "", nil
 	}
 	frameType := strings.ToLower(frame.Type)
 	switch frameType {
 	case "move":
 		var payload handler.MovePayload
 		if err := json.Unmarshal(frame.Payload, &payload); err != nil {
-			return outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, nil
+			return &outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, "", nil
 		}
 		result, err := h.svc.Move(ctx, &payload)
-		return h.makeResponse(frameType, result, err, true)
-	case "buff":
-		var payload handler.BuffPayload
-		if err := json.Unmarshal(frame.Payload, &payload); err != nil {
-			return outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, nil
-		}
-		result, err := h.svc.Buff(ctx, &payload)
-		return h.makeResponse(frameType, result, err, true)
+		return h.makeResponse(frameType, payload.RoomID, result, err, true)
 	case "attack":
 		var payload handler.AttackPayload
 		if err := json.Unmarshal(frame.Payload, &payload); err != nil {
-			return outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, nil
+			return &outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, "", nil
 		}
 		result, err := h.svc.Attack(ctx, &payload)
-		return h.makeResponse(frameType, result, err, true)
-	case "trade":
-		var payload handler.TradePayload
-		if err := json.Unmarshal(frame.Payload, &payload); err != nil {
-			return outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("invalid payload: %v", err)}, nil
-		}
-		result, err := h.svc.Trade(ctx, &payload)
-		return h.makeResponse(frameType, result, err, false)
+		return h.makeResponse(frameType, payload.RoomID, result, err, true)
 	default:
-		return outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("unsupported type: %s", frame.Type)}, nil
+		return &outboundFrame{Type: frameType, Scope: scopeAck, Error: fmt.Sprintf("unsupported type: %s", frame.Type)}, "", nil
 	}
 }
 
-func (h *Handler) makeResponse(frameType string, result interface{}, err error, broadcast bool) (outboundFrame, []outboundFrame) {
-	resp := outboundFrame{Type: frameType, Scope: scopeAck}
+func (h *Handler) makeResponse(frameType, roomID string, result interface{}, err error, broadcast bool) (*outboundFrame, string, *outboundFrame) {
+	resp := &outboundFrame{Type: frameType, Scope: scopeAck, RoomID: roomID}
 	if err != nil {
 		resp.Error = err.Error()
-		return resp, nil
+		return resp, roomID, nil
 	}
 	resp.Result = result
 	if !broadcast {
-		return resp, nil
+		return resp, roomID, nil
 	}
-	return resp, []outboundFrame{{
+	return resp, roomID, &outboundFrame{
 		Type:   frameType,
 		Scope:  scopeBroadcast,
+		RoomID: roomID,
 		Result: result,
-	}}
+	}
+}
+
+func (h *Handler) assignRoom(client *wsClient, roomID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	info, ok := h.clients[client]
+	if !ok {
+		panic("client not found")
+	}
+	if info.roomID == roomID {
+		panic("room assignment duplicated")
+	}
+	if info.roomID != "" {
+		panic("room assignment conflict")
+	}
+	info.roomID = roomID
+	h.rooms[RoomID(roomID)].Add(client)
+}
+
+func (h *Handler) removeRoomLocked(client *wsClient, roomID string) {
+	h.rooms[RoomID(roomID)].Remove(client)
 }
