@@ -87,9 +87,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.addClient(client)
 
-	//NOTE: テスト用のためクライアントはすべてルーム1に行く
-	h.assignRoom(client, "1")
-
 	wg := sync.WaitGroup{}
 	wg.Go(func() { h.writeLoop(ctx, client) })
 	wg.Go(func() { h.readLoop(ctx, client) })
@@ -147,14 +144,24 @@ func (h *Handler) writeLoop(ctx context.Context, client *wsClient) {
 func (h *Handler) addClient(client *wsClient) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.clients[client] = &clientInfo{}
+	h.clients[client] = &clientInfo{roomID: "1"}
+	h.rooms[RoomID("1")].Add(client)
 }
 
 func (h *Handler) removeClient(client *wsClient) {
 	h.mu.Lock()
-	info := h.clients[client]
-	if info != nil && info.roomID != "" {
-		h.removeRoomLocked(client, info.roomID)
+	info, ok := h.clients[client]
+	if !ok {
+		h.mu.Unlock()
+		panic("client not found")
+	}
+	if info == nil {
+		h.mu.Unlock()
+		panic("client info not found")
+	}
+	h.rooms[RoomID(info.roomID)].Remove(client)
+	if len(h.rooms[RoomID(info.roomID)]) == 0 {
+		delete(h.rooms, RoomID(info.roomID))
 	}
 	delete(h.clients, client)
 	h.mu.Unlock()
@@ -184,10 +191,10 @@ func (h *Handler) broadcast(roomID string, frame *outboundFrame, exclude *wsClie
 	for _, target := range targets {
 		select {
 		case <-target.done:
-			break
+			h.removeClient(target)
 		default:
+			target.send <- frame
 		}
-		target.send <- frame
 	}
 }
 
@@ -246,23 +253,6 @@ func (h *Handler) makeResponse(frameType, roomID string, result interface{}, err
 		RoomID: roomID,
 		Result: result,
 	}
-}
-
-func (h *Handler) assignRoom(client *wsClient, roomID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	info, ok := h.clients[client]
-	if !ok {
-		panic("client not found")
-	}
-	if info.roomID == roomID {
-		panic("room assignment duplicated")
-	}
-	if info.roomID != "" {
-		panic("room assignment conflict")
-	}
-	info.roomID = roomID
-	h.rooms[RoomID(roomID)].Add(client)
 }
 
 func (h *Handler) removeRoomLocked(client *wsClient, roomID string) {
