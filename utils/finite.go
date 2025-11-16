@@ -7,7 +7,7 @@ import (
 )
 
 func FiniteVec(v domain.Vec2) bool {
-	return !(isFinite(v.X) || isFinite(v.Y))
+	return isFinite(v.X) && isFinite(v.Y)
 }
 
 func isFinite(f float64) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,8 +72,8 @@ func (s *interactionService) Connect(ctx context.Context) (string, string, error
 	_ = ctx
 	start := time.Now()
 	defer s.record("connect", start)
-	playerID := uuid.NewString()
-	roomID := uuid.NewString()
+	playerID := strings.ReplaceAll(uuid.NewString(), "-", "")
+	roomID := "1"
 	_ = s.state.RegisterPlayer(ctx, playerID, roomID)
 	return playerID, roomID, nil
 }

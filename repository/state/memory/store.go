@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/touka-aoi/paralle-vs-single/domain"
@@ -79,12 +80,22 @@ func (s *Store) applyAttack(cmd *state.Attack, ts time.Time) (*domain.AttackResu
 }
 
 func (s *Store) registerPlayer(playerID string, roomID string) error {
-	s.players[playerID] = &domain.PlayerSnapshot{
-		PlayerID: playerID,
+	player, ok := s.players[playerID]
+	if !ok {
+		player = &domain.PlayerSnapshot{PlayerID: playerID, Health: 100}
+		s.players[playerID] = player
 	}
-	s.rooms[roomID] = &domain.RoomSnapshot{
-		RoomID: roomID,
+	player.RoomID = roomID
+
+	room, ok := s.rooms[roomID]
+	if !ok {
+		room = &domain.RoomSnapshot{RoomID: roomID}
+		s.rooms[roomID] = &domain.RoomSnapshot{RoomID: roomID}
 	}
+	if !slices.Contains(room.MemberIDs, playerID) {
+		room.MemberIDs = append(room.MemberIDs, playerID)
+	}
+	s.roomStats[roomID] = s.computeRoomStats(room)
 	return nil
 }
 
@@ -134,38 +145,17 @@ func copyRoom(src *domain.RoomSnapshot) domain.RoomSnapshot {
 }
 
 func (s *Store) computeRoomStats(room *domain.RoomSnapshot) *domain.RoomStats {
-	stats := &domain.RoomStats{
-		RoomID:              room.RoomID,
-		ActiveBuffHistogram: make(map[string]int),
-	}
+	stats := &domain.RoomStats{RoomID: room.RoomID}
 	stats.TotalHealth = s.recomputeTotalHealth(room)
 	stats.LastUpdated = room.LastUpdated
-	for _, id := range room.MemberIDs {
-		if player, ok := s.players[id]; ok {
-			for _, buff := range player.ActiveBuffs {
-				stats.ActiveBuffHistogram[buff.Buff.BuffID]++
-			}
-		}
-	}
 	return stats
 }
 
 func copyRoomStats(src *domain.RoomStats) domain.RoomStats {
 	if src == nil {
-		return domain.RoomStats{
-			ActiveBuffHistogram: make(map[string]int),
-		}
+		return domain.RoomStats{}
 	}
-	dst := *src
-	if src.ActiveBuffHistogram == nil {
-		dst.ActiveBuffHistogram = make(map[string]int)
-	} else {
-		dst.ActiveBuffHistogram = make(map[string]int, len(src.ActiveBuffHistogram))
-		for k, v := range src.ActiveBuffHistogram {
-			dst.ActiveBuffHistogram[k] = v
-		}
-	}
-	return dst
+	return *src
 }
 
 func (s *Store) statsForRoom(room *domain.RoomSnapshot) (*domain.RoomStats, error) {

@@ -34,15 +34,13 @@ type RoomSnapshot struct {
 	LastUpdated time.Time
 }
 
-// RoomStats はルーム単位での集計値を表す。
+// RoomStats はルームのHP送料と相互回数を示す。全体ロック用
 type RoomStats struct {
 	RoomID string
 
-	TotalHealth         int
-	AverageEnergy       float64
-	ActiveBuffHistogram map[string]int
-	InteractionCount    int
-	LastUpdated         time.Time
+	TotalHealth      int
+	InteractionCount int
+	LastUpdated      time.Time
 }
 
 // MoveResult は移動処理結果。

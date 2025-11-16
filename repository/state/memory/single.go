@@ -32,19 +32,14 @@ func (s *SingleThreadStore) ApplyMove(ctx context.Context, cmd *state.Move) (*do
 	return s.base.applyMove(cmd, s.now())
 }
 
-func (s *SingleThreadStore) ApplyBuff(ctx context.Context, cmd *state.Buff) (*domain.BuffResult, error) {
-	_ = ctx
-	return s.base.applyBuff(cmd, s.now())
-}
-
 func (s *SingleThreadStore) ApplyAttack(ctx context.Context, cmd *state.Attack) (*domain.AttackResult, error) {
 	_ = ctx
 	return s.base.applyAttack(cmd, s.now())
 }
 
-func (s *SingleThreadStore) ApplyTrade(ctx context.Context, cmd *state.Trade) (*domain.TradeResult, error) {
+func (s *SingleThreadStore) RegisterPlayer(ctx context.Context, playerID string, roomID string) error {
 	_ = ctx
-	return s.base.applyTrade(cmd, s.now())
+	return s.base.registerPlayer(playerID, roomID)
 }
 
 func (s *SingleThreadStore) now() time.Time {
