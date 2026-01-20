@@ -130,7 +130,7 @@ func (se *SessionEndpoint) readLoop(ctx context.Context) {
 				continue
 			}
 			se.session.TouchRead()
-			err = se.dispatcher.Dispatch(ctx, se.session.ID(), data)
+			err = se.dispatcher.Dispatch(ctx, data)
 			if err != nil {
 				se.sendCtrlEvent(ctx, endpointEvent{kind: evDispatchError, err: err})
 			}
@@ -161,7 +161,7 @@ func (se *SessionEndpoint) close() {
 	se.cancel()
 	se.session.Close()
 	se.connection.Close()
-	se.dispatcher.RemoveSession(se.session.ID())
+	_ = se.dispatcher.Dispatch(se.ctx, nil)
 }
 
 // handleControlEvent は制御チャネルからのイベントを処理し論理セッションの状態を更新する唯一の関数です。

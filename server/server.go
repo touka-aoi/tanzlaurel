@@ -12,14 +12,13 @@ type Server struct {
 	dispatcher domain.Dispatcher
 }
 
-func NewServer(addr string, mux *http.ServeMux, dispatcher domain.Dispatcher) domain.Server {
+func NewServer(addr string, handler http.Handler) domain.Server {
 	httpServer := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: handler,
 	}
 	return &Server{
-		HTTP:       httpServer,
-		dispatcher: dispatcher,
+		HTTP: httpServer,
 	}
 }
 

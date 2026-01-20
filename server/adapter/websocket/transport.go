@@ -11,7 +11,7 @@ type wsTransport struct {
 	conn *websocket.Conn
 }
 
-func NewTransport(conn *websocket.Conn) domain.Transport {
+func NewTransportFrom(conn *websocket.Conn) domain.Transport {
 	return &wsTransport{conn: conn}
 }
 

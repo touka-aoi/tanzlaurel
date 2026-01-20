@@ -24,7 +24,7 @@ func (h *AcceptHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "failed to accept", "err", err)
 		return
 	}
-	transport := adapterwebsocker.NewTransport(conn)
+	transport := adapterwebsocker.NewTransportFrom(conn)
 	connection := domain.NewConnection(transport)
 	session := domain.NewSession()
 	endpoint, err := domain.NewSessionEndpoint(session, connection, h.dispatcher)

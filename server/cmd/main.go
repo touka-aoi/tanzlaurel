@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/touka-aoi/paralle-vs-single/server"
+	"github.com/touka-aoi/paralle-vs-single/server/domain"
 	"github.com/touka-aoi/paralle-vs-single/utils"
 )
 
@@ -22,8 +23,9 @@ func main() {
 	addr := utils.GetEnvDefault("ADDR", "localhost")
 	port := utils.GetEnvDefault("PORT", "9090")
 
-	mux := http.NewServeMux()
-	s := server.NewServer(fmt.Sprintf("%s:%s", addr, port), mux, nil)
+	dispatcher := domain.NewLoopbackDispatcher()
+	handler := server.Route(dispatcher)
+	s := server.NewServer(fmt.Sprintf("%s:%s", addr, port), handler)
 
 	go func() {
 		if err := s.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
