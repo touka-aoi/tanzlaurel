@@ -26,13 +26,14 @@ func (h *AcceptHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	transport := adapterwebsocker.NewTransportFrom(conn)
-	connection := domain.NewConnection(transport)
 	session := domain.NewSession()
+	connection := domain.NewConnection(session.ID(), transport)
 	endpoint, err := domain.NewSessionEndpoint(session, connection, h.pubsub, h.roomManager)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create session endpoint", "err", err)
 		return
 	}
+	slog.DebugContext(ctx, "accepted new connection", "session_id", session.ID)
 	err = endpoint.Run()
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to run session endpoint", "err", err)

@@ -6,12 +6,17 @@ type ConnectionID string
 
 // Connection は物理的な接続を表します。
 type Connection struct {
-	ID        ConnectionID
-	transport Transport
+	SessionID    SessionID
+	ConnectionID ConnectionID
+	transport    Transport
 }
 
-func NewConnection(transport Transport) *Connection {
-	return &Connection{transport: transport}
+func NewConnection(sessionID SessionID, transport Transport) *Connection {
+	return &Connection{
+		SessionID:    sessionID,
+		ConnectionID: ConnectionID(sessionID),
+		transport:    transport,
+	}
 }
 
 func (c *Connection) Write(ctx context.Context, data []byte) error {
