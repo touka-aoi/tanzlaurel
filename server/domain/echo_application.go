@@ -14,12 +14,8 @@ func NewEchoApplication() *EchoApplication {
 	return &EchoApplication{}
 }
 
-func (e *EchoApplication) Parse(ctx context.Context, data []byte) (interface{}, error) {
-	return data, nil
-}
-
-func (e *EchoApplication) Handle(ctx context.Context, event interface{}) error {
-	e.pendingData = event.([]byte)
+func (e *EchoApplication) HandleMessage(ctx context.Context, sessionID SessionID, data []byte) error {
+	e.pendingData = data
 	return nil
 }
 

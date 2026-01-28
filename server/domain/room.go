@@ -100,15 +100,8 @@ func (r *Room) Run(ctx context.Context) error {
 				select {
 				case msg := <-msgCh:
 					// アプリケーションロジックが担当する
-					parseData, err := r.application.Parse(ctx, msg.Data)
-					if err != nil {
-						// どうするのこれ？ なんでルームでパースしてるかは意味わからんすぎるな
-						slog.WarnContext(ctx, "room parse failed", "err", err)
-						continue
-					}
-					if err := r.application.Handle(ctx, parseData); err != nil {
-						// どうするのこれ？
-						slog.WarnContext(ctx, "room handle failed", "err", err)
+					if err := r.application.HandleMessage(ctx, msg.SessionID, msg.Data); err != nil {
+						slog.WarnContext(ctx, "room handle message failed", "err", err)
 					}
 				default:
 					break RECEIVE_LOOP

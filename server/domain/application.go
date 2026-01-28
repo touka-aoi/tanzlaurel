@@ -3,8 +3,8 @@ package domain
 import "context"
 
 type Application interface {
-	// TODO: 将来的には Event 型を導入して interface{} を廃止する想定。
-	Parse(ctx context.Context, data []byte) (interface{}, error)
-	Handle(ctx context.Context, event interface{}) error
+	// HandleMessage はメッセージのパースと処理を一気貫通で実行する。
+	// パース結果をApplication外部に漏らさない設計。
+	HandleMessage(ctx context.Context, sessionID SessionID, data []byte) error
 	Tick(ctx context.Context) interface{}
 }
