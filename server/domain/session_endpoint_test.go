@@ -3,8 +3,8 @@ package domain_test
 import (
 	"testing"
 
-	domain "github.com/touka-aoi/paralle-vs-single/server/domain"
-	"github.com/touka-aoi/paralle-vs-single/server/domain/mocks"
+	domain "withered/server/domain"
+	"withered/server/domain/mocks"
 	"go.uber.org/mock/gomock"
 )
 

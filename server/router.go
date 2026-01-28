@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
-	"github.com/touka-aoi/paralle-vs-single/server/handler"
+	"withered/server/domain"
+	"withered/server/handler"
 )
 
 func Route(pubsub domain.PubSub, roomManager domain.RoomManager) *http.ServeMux {

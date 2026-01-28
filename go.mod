@@ -1,4 +1,4 @@
-module github.com/touka-aoi/paralle-vs-single
+module withered
 
 go 1.25.3
 

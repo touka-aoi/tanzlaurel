@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/touka-aoi/paralle-vs-single/server"
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
+	"withered/server"
+	"withered/server/domain"
 )
 
 func main() {

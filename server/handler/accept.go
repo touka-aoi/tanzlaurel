@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/coder/websocket"
-	"github.com/touka-aoi/paralle-vs-single/server/adapter/websocket"
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
+	"withered/server/adapter/websocket"
+	"withered/server/domain"
 )
 
 type AcceptHandler struct {

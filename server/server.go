@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
+	"withered/server/domain"
 )
 
 type Server struct {

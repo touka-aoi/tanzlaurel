@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/touka-aoi/paralle-vs-single/server"
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
-	"github.com/touka-aoi/paralle-vs-single/utils"
+	"withered/server"
+	"withered/server/domain"
+	"withered/utils"
 )
 
 func main() {

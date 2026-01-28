@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/coder/websocket"
-	"github.com/touka-aoi/paralle-vs-single/server/domain"
+	"withered/server/domain"
 )
 
 type wsTransport struct {
