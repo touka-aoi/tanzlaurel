@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"withered/server"
+	"withered/server/application"
 	"withered/server/domain"
 	"withered/utils"
 )
@@ -30,8 +31,9 @@ func main() {
 	defaultRoomID := domain.RoomID("default")
 	roomManager := domain.NewSimpleRoomManager(defaultRoomID)
 
-	// Roomを作成して起動（Applicationはnil、後で実装）
-	room := domain.NewRoom(defaultRoomID, pubsub, nil)
+	// Roomを作成して起動
+	app := application.NewWitheredApplication()
+	room := domain.NewRoom(defaultRoomID, pubsub, app)
 	go func() {
 		if err := room.Run(ctx); err != nil {
 			slog.ErrorContext(ctx, "room error", "err", err)
