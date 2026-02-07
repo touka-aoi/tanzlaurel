@@ -90,12 +90,6 @@ func (app *WitheredApplication) handleInput(ctx context.Context, sessionID domai
 		"keyMask", input.KeyMask,
 	)
 
-	// キーマスクから移動方向を計算
-	dx, dy := keyMaskToDirection(input.KeyMask)
-	if dx != 0 || dy != 0 {
-		app.field.ActorMove(ctx, sessionID, dx*PlayerSpeed, dy*PlayerSpeed)
-	}
-
 	app.pendingInputs = append(app.pendingInputs, InputEvent{
 		SessionID: sessionID,
 		Header:    header,
@@ -193,7 +187,13 @@ func (app *WitheredApplication) handleControl(ctx context.Context, sessionID dom
 }
 
 func (app *WitheredApplication) Tick(ctx context.Context) interface{} {
-	// 入力をクリア
+	// pendingInputsを走査して移動処理を適用
+	for _, event := range app.pendingInputs {
+		dx, dy := keyMaskToDirection(event.Input.KeyMask)
+		if dx != 0 || dy != 0 {
+			app.field.ActorMove(ctx, event.SessionID, dx*PlayerSpeed, dy*PlayerSpeed)
+		}
+	}
 	app.pendingInputs = app.pendingInputs[:0]
 
 	// 全アクターの位置をエンコードして返す
