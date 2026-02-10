@@ -43,7 +43,7 @@ func TestHeaderRoundTrip(t *testing.T) {
 
 func TestPayloadHeaderRoundTrip(t *testing.T) {
 	original := &PayloadHeader{
-		DataType: DataTypeActor,
+		DataType: DataTypeActor2D,
 		SubType:  uint8(ActorSubTypeSpawn),
 	}
 

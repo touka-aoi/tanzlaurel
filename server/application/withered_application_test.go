@@ -52,7 +52,7 @@ func TestWitheredApplication_HandleMessage_ActorSpawn(t *testing.T) {
 		Timestamp: 1000,
 	}
 	payloadHeader := &domain.PayloadHeader{
-		DataType: domain.DataTypeActor,
+		DataType: domain.DataTypeActor2D,
 		SubType:  uint8(domain.ActorSubTypeSpawn),
 	}
 	spawn := &domain.ActorSpawn{
