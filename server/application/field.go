@@ -16,7 +16,7 @@ type Field struct {
 // Actor はフィールド上のプレイヤーを表す構造体です。
 type Actor struct {
 	SessionID domain.SessionID
-	Position  Position2D
+	Position  domain.Position2D
 }
 
 // NewField は指定されたマップでフィールドを作成します。
@@ -31,7 +31,7 @@ func NewField(m *Map) *Field {
 func (f *Field) SpawnAtCenter(sessionID domain.SessionID) *Actor {
 	actor := &Actor{
 		SessionID: sessionID,
-		Position: Position2D{
+		Position: domain.Position2D{
 			X: f.Map.WorldWidth() / 2,
 			Y: f.Map.WorldHeight() / 2,
 		},
