@@ -35,10 +35,11 @@ type Header struct {
 type DataType uint8
 
 const (
-	DataTypeInput   DataType = 1
-	DataTypeActor   DataType = 2
-	DataTypeVoice   DataType = 3
-	DataTypeControl DataType = 4
+	DataTypeInput    DataType = 1
+	DataTypeActor2D  DataType = 2
+	DataTypeVoice    DataType = 3
+	DataTypeControl  DataType = 4
+	DataTypeActor3D  DataType = 5
 )
 
 // ActorSubType はactorメッセージのサブタイプ

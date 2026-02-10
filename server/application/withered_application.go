@@ -66,7 +66,7 @@ func (app *WitheredApplication) HandleMessage(ctx context.Context, sessionID dom
 	switch payloadHeader.DataType {
 	case domain.DataTypeInput:
 		return app.handleInput(ctx, sessionID, header, payload)
-	case domain.DataTypeActor:
+	case domain.DataTypeActor2D:
 		return app.handleActor(ctx, sessionID, header, payloadHeader.SubType, payload)
 	case domain.DataTypeVoice:
 		return app.handleVoice(ctx, sessionID, header, payload)
@@ -216,7 +216,7 @@ func encodeActorBroadcastMessage(payload []byte) []byte {
 		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
 	}
 	payloadHeader := domain.PayloadHeader{
-		DataType: domain.DataTypeActor,
+		DataType: domain.DataTypeActor2D,
 		SubType:  uint8(domain.ActorSubTypeUpdate),
 	}
 
