@@ -223,6 +223,20 @@ func BoneNameToID(name string) uint8 {
 	return uint8(name[0] - '0') // 仮実装: 最初の文字をIDとして返す
 }
 
+// Actor2DSpawn は2Dキャラ生成メッセージ
+type Actor2DSpawn struct {
+	Position Position2D
+}
+
+// Actor2DUpdate は2Dキャラ更新メッセージ
+type Actor2DUpdate struct {
+	Position Position2D
+}
+
+// Actor2DDespawn は2Dキャラ削除メッセージ
+// 削除対象はヘッダーのsessionIDで特定
+type Actor2DDespawn struct{}
+
 // Actor3DSpawn はキャラ生成メッセージ
 type Actor3DSpawn struct {
 	Position Position
@@ -252,12 +266,14 @@ type InputPayload struct {
 
 // エラー定義
 var (
-	ErrInvalidPosition2DData   = errors.New("invalid position2d data: expected 8 bytes")
-	ErrInvalidPositionSize     = errors.New("invalid position size")
-	ErrInvalidBoneDataSize     = errors.New("invalid bone data size")
-	ErrInvalidActor3DSpawnSize   = errors.New("invalid actor spawn size")
-	ErrInvalidActor3DUpdateSize  = errors.New("invalid actor update size")
-	ErrInvalidInputPayloadSize = errors.New("invalid input payload size")
+	ErrInvalidPosition2DData    = errors.New("invalid position2d data: expected 8 bytes")
+	ErrInvalidPositionSize      = errors.New("invalid position size")
+	ErrInvalidBoneDataSize      = errors.New("invalid bone data size")
+	ErrInvalidActor2DSpawnSize  = errors.New("invalid actor2d spawn size")
+	ErrInvalidActor2DUpdateSize = errors.New("invalid actor2d update size")
+	ErrInvalidActor3DSpawnSize  = errors.New("invalid actor3d spawn size")
+	ErrInvalidActor3DUpdateSize = errors.New("invalid actor3d update size")
+	ErrInvalidInputPayloadSize  = errors.New("invalid input payload size")
 )
 
 // ParsePosition2D はバイト列からPosition2Dをパースする
@@ -334,6 +350,48 @@ func (b *BoneData) Encode() []byte {
 	byteOrder.PutUint32(data[9:13], math.Float32bits(b.QZ))
 	byteOrder.PutUint32(data[13:17], math.Float32bits(b.QW))
 	return data
+}
+
+// ParseActor2DSpawn はバイト列からActor2DSpawnをパースする
+func ParseActor2DSpawn(data []byte) (*Actor2DSpawn, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidActor2DSpawnSize
+	}
+
+	pos, err := ParsePosition2D(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Actor2DSpawn{
+		Position: *pos,
+	}, nil
+}
+
+// Encode はActor2DSpawnをバイト列にエンコードする
+func (a *Actor2DSpawn) Encode() []byte {
+	return a.Position.Encode()
+}
+
+// ParseActor2DUpdate はバイト列からActor2DUpdateをパースする
+func ParseActor2DUpdate(data []byte) (*Actor2DUpdate, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidActor2DUpdateSize
+	}
+
+	pos, err := ParsePosition2D(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Actor2DUpdate{
+		Position: *pos,
+	}, nil
+}
+
+// Encode はActor2DUpdateをバイト列にエンコードする
+func (a *Actor2DUpdate) Encode() []byte {
+	return a.Position.Encode()
 }
 
 // ParseActor3DSpawn はバイト列からActor3DSpawnをパースする
