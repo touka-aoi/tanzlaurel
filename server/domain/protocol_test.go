@@ -175,8 +175,8 @@ func TestBoneDataRoundTrip(t *testing.T) {
 	}
 }
 
-func TestActorSpawnRoundTrip(t *testing.T) {
-	original := &ActorSpawn{
+func TestActor3DSpawnRoundTrip(t *testing.T) {
+	original := &Actor3DSpawn{
 		Position: Position{
 			X: 10.0, Y: 20.0, Z: 30.0,
 			QX: 0.0, QY: 0.0, QZ: 0.0, QW: 1.0,
@@ -188,9 +188,9 @@ func TestActorSpawnRoundTrip(t *testing.T) {
 		t.Errorf("encoded size = %d, want %d", len(encoded), PositionSize)
 	}
 
-	decoded, err := ParseActorSpawn(encoded)
+	decoded, err := ParseActor3DSpawn(encoded)
 	if err != nil {
-		t.Fatalf("ParseActorSpawn failed: %v", err)
+		t.Fatalf("ParseActor3DSpawn failed: %v", err)
 	}
 
 	if !floatEqual(decoded.Position.X, original.Position.X) {
@@ -201,8 +201,8 @@ func TestActorSpawnRoundTrip(t *testing.T) {
 	}
 }
 
-func TestActorUpdateRoundTrip(t *testing.T) {
-	original := &ActorUpdate{
+func TestActor3DUpdateRoundTrip(t *testing.T) {
+	original := &Actor3DUpdate{
 		Bitmask: [16]byte{0x03, 0x00}, // ボーン0と1が有効
 		Position: Position{
 			X: 5.0, Y: 10.0, Z: 15.0,
@@ -220,9 +220,9 @@ func TestActorUpdateRoundTrip(t *testing.T) {
 		t.Errorf("encoded size = %d, want %d", len(encoded), expectedSize)
 	}
 
-	decoded, err := ParseActorUpdate(encoded)
+	decoded, err := ParseActor3DUpdate(encoded)
 	if err != nil {
-		t.Fatalf("ParseActorUpdate failed: %v", err)
+		t.Fatalf("ParseActor3DUpdate failed: %v", err)
 	}
 
 	if decoded.Bitmask != original.Bitmask {

@@ -38,7 +38,7 @@ func TestWitheredApplication_HandleMessage_Input(t *testing.T) {
 	}
 }
 
-func TestWitheredApplication_HandleMessage_ActorSpawn(t *testing.T) {
+func TestWitheredApplication_HandleMessage_Actor3DSpawn(t *testing.T) {
 	app := NewWitheredApplication()
 	ctx := context.Background()
 	sessionID := domain.NewSessionID()
@@ -55,7 +55,7 @@ func TestWitheredApplication_HandleMessage_ActorSpawn(t *testing.T) {
 		DataType: domain.DataTypeActor2D,
 		SubType:  uint8(domain.ActorSubTypeSpawn),
 	}
-	spawn := &domain.ActorSpawn{
+	spawn := &domain.Actor3DSpawn{
 		Position: domain.Position{X: 1.0, Y: 2.0, Z: 3.0, QX: 0, QY: 0, QZ: 0, QW: 1},
 	}
 

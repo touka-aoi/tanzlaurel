@@ -119,7 +119,7 @@ func keyMaskToDirection(keyMask uint32) (dx, dy float32) {
 func (app *WitheredApplication) handleActor(ctx context.Context, sessionID domain.SessionID, header *domain.Header, subType uint8, data []byte) error {
 	switch domain.ActorSubType(subType) {
 	case domain.ActorSubTypeSpawn:
-		spawn, err := domain.ParseActorSpawn(data)
+		spawn, err := domain.ParseActor3DSpawn(data)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func (app *WitheredApplication) handleActor(ctx context.Context, sessionID domai
 			"position", spawn.Position,
 		)
 	case domain.ActorSubTypeUpdate:
-		update, err := domain.ParseActorUpdate(data)
+		update, err := domain.ParseActor3DUpdate(data)
 		if err != nil {
 			return err
 		}
