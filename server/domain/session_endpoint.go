@@ -148,8 +148,8 @@ func (se *SessionEndpoint) readLoop(ctx context.Context) {
 		default:
 			data, err := se.connection.Read(ctx)
 			if err != nil {
-				se.sendCtrlEvent(ctx, endpointEvent{kind: evReadError, err: err})
-				continue
+				se.sendCtrlEvent(ctx, endpointEvent{kind: evClose, err: err})
+				return
 			}
 			se.handleData(ctx, data)
 		}
@@ -164,8 +164,8 @@ func (se *SessionEndpoint) writeLoop(ctx context.Context) {
 		case data := <-se.writeCh:
 			err := se.connection.Write(ctx, data)
 			if err != nil {
-				se.sendCtrlEvent(ctx, endpointEvent{kind: evWriteError, err: err})
-				continue
+				se.sendCtrlEvent(ctx, endpointEvent{kind: evClose, err: err})
+				return
 			}
 			se.session.TouchWrite()
 		}
@@ -280,13 +280,6 @@ func (se *SessionEndpoint) handleControlEvent(ctx context.Context, ev endpointEv
 		se.close()
 	case evPong:
 		se.session.TouchPong()
-	case evReadError:
-		return
-	case evWriteError:
-		return
-	case evDispatchError:
-		return
-
 	default:
 		slog.WarnContext(ctx, "unknown endpoint event kind", "kind", ev.kind)
 	}
