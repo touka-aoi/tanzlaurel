@@ -5,30 +5,49 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>2D Map Client</title>
+    <title>hogehoge</title>
   </head>
   <body>
-    <div id="app">
-      <canvas id="game"></canvas>
-      <div id="event-log">
-        <div class="log-toolbar">
-          <div class="log-filters">
-            <button class="log-chip active" data-type="connection">Connection</button>
-            <button class="log-chip active" data-type="control">Control</button>
-            <button class="log-chip active" data-type="input">Input</button>
-            <button class="log-chip" data-type="actor">Actor</button>
-            <button class="log-chip active" data-type="error">Error</button>
-          </div>
-          <div class="log-actions">
-            <button class="log-btn" id="log-autoscroll">Auto-scroll</button>
-            <button class="log-btn" id="log-clear">Clear</button>
-          </div>
+    <nav class="ak-nav">
+      <div class="ak-nav-inner">
+        <div class="ak-logo">
+          <span class="ak-diamond">◆</span>
+          <span class="ak-logo-text">hogehoge</span>
         </div>
-        <div class="log-entries" id="log-entries"></div>
       </div>
-    </div>
+    </nav>
+
+    <main>
+      <div id="app">
+        <canvas id="game"></canvas>
+        <div id="event-log">
+          <div class="log-toolbar">
+            <div class="log-filters">
+              <button class="log-chip active" data-type="connection">Connection</button>
+              <button class="log-chip active" data-type="control">Control</button>
+              <button class="log-chip active" data-type="input">Input</button>
+              <button class="log-chip" data-type="actor">Actor</button>
+              <button class="log-chip active" data-type="error">Error</button>
+            </div>
+            <div class="log-actions">
+              <button class="log-btn" id="log-autoscroll">Auto-scroll</button>
+              <button class="log-btn" id="log-clear">Clear</button>
+            </div>
+          </div>
+          <div class="log-entries" id="log-entries"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="ak-footer">
+      <div class="ak-footer-inner">
+        <span class="ak-diamond">◆</span>
+        <span>hogehoge</span>
+      </div>
+    </footer>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
