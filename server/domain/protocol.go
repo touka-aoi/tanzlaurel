@@ -177,9 +177,17 @@ func (j *JoinPayload) Encode() []byte {
 
 // サイズ定数
 const (
-	PositionSize = 28 // 7 * 4 bytes (7 float32)
-	BoneDataSize = 17 // 1 (BoneID) + 4 * 4 bytes (4 float32)
+	Position2DSize = 8  // 2 * float32
+	PositionSize   = 28 // 7 * 4 bytes (7 float32)
+	BoneDataSize   = 17 // 1 (BoneID) + 4 * 4 bytes (4 float32)
 )
+
+// Position2D は2D位置データ (8バイト)
+//
+//	x, y float32 (8) - 位置
+type Position2D struct {
+	X, Y float32
+}
 
 // Position は位置・姿勢データ (28バイト)
 //
@@ -243,12 +251,33 @@ type InputPayload struct {
 
 // エラー定義
 var (
+	ErrInvalidPosition2DData   = errors.New("invalid position2d data: expected 8 bytes")
 	ErrInvalidPositionSize     = errors.New("invalid position size")
 	ErrInvalidBoneDataSize     = errors.New("invalid bone data size")
 	ErrInvalidActorSpawnSize   = errors.New("invalid actor spawn size")
 	ErrInvalidActorUpdateSize  = errors.New("invalid actor update size")
 	ErrInvalidInputPayloadSize = errors.New("invalid input payload size")
 )
+
+// ParsePosition2D はバイト列からPosition2Dをパースする
+func ParsePosition2D(data []byte) (*Position2D, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidPosition2DData
+	}
+
+	return &Position2D{
+		X: math.Float32frombits(byteOrder.Uint32(data[0:4])),
+		Y: math.Float32frombits(byteOrder.Uint32(data[4:8])),
+	}, nil
+}
+
+// Encode はPosition2Dをバイト列にエンコードする
+func (p *Position2D) Encode() []byte {
+	buf := make([]byte, Position2DSize)
+	byteOrder.PutUint32(buf[0:4], math.Float32bits(p.X))
+	byteOrder.PutUint32(buf[4:8], math.Float32bits(p.Y))
+	return buf
+}
 
 // ParsePosition はバイト列からPositionをパースする
 func ParsePosition(data []byte) (*Position, error) {
