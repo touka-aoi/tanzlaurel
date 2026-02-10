@@ -38,7 +38,7 @@ type SessionEndpoint struct {
 	closed atomic.Bool
 }
 
-func NewSessionEndpoint(session *Session, connection *Connection, pubsub PubSub, roomManager RoomManager) (*SessionEndpoint, error) {
+func NewSessionEndpoint(ctx context.Context, session *Session, connection *Connection, pubsub PubSub, roomManager RoomManager) (*SessionEndpoint, error) {
 	if session == nil {
 		return nil, ErrInitializationFailed
 	}
@@ -51,7 +51,7 @@ func NewSessionEndpoint(session *Session, connection *Connection, pubsub PubSub,
 	if roomManager == nil {
 		return nil, ErrInitializationFailed
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	se := &SessionEndpoint{
 		ctx:         ctx,
 		cancel:      cancel,

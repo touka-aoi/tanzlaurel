@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"context"
 	"testing"
 
 	domain "withered/server/domain"
@@ -19,7 +20,7 @@ func TestNewSessionEndpoint_InitializesDefaults(t *testing.T) {
 	ps := mocks.NewMockPubSub(ctrl)
 	rm := mocks.NewMockRoomManager(ctrl)
 
-	se, err := domain.NewSessionEndpoint(s, c, ps, rm)
+	se, err := domain.NewSessionEndpoint(context.Background(), s, c, ps, rm)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
