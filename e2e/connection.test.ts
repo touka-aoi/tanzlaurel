@@ -44,42 +44,50 @@ test.describe("WebSocket Connection", () => {
       })
       .toBe(true);
 
-    // プレイヤー表示を待機（Actorブロードキャスト受信後）
-    // 少し待ってから描画を確認
-    await page.waitForTimeout(500);
+    // Canvasから緑色のプレイヤーが描画されているかポーリングで確認
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const canvas = document.querySelector(
+              "canvas#game"
+            ) as HTMLCanvasElement | null;
+            if (!canvas) return false;
 
-    // Canvasから緑色のプレイヤーが描画されているか確認
-    const hasGreenPlayer = await page.evaluate(() => {
-      const canvas = document.querySelector(
-        "canvas#game"
-      ) as HTMLCanvasElement | null;
-      if (!canvas) return false;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return false;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return false;
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+            const data = imageData.data;
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
+            // 緑色 (#4ade80) のRGB値: R=74, G=222, B=128
+            // 許容誤差を持たせて検索
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
 
-      // 緑色 (#4ade80) のRGB値: R=74, G=222, B=128
-      // 許容誤差を持たせて検索
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        // 緑色のプレイヤーを検出 (誤差 ±10)
-        if (
-          Math.abs(r - 74) < 10 &&
-          Math.abs(g - 222) < 10 &&
-          Math.abs(b - 128) < 10
-        ) {
-          return true;
+              // 緑色のプレイヤーを検出 (誤差 ±10)
+              if (
+                Math.abs(r - 74) < 10 &&
+                Math.abs(g - 222) < 10 &&
+                Math.abs(b - 128) < 10
+              ) {
+                return true;
+              }
+            }
+            return false;
+          }),
+        {
+          timeout: 10000,
+          message: "Should render green player on canvas",
         }
-      }
-      return false;
-    });
-
-    expect(hasGreenPlayer).toBe(true);
+      )
+      .toBe(true);
   });
 });

@@ -11,6 +11,7 @@ export default defineConfig({
   webServer: [
     {
       command: "sh -c 'PORT=9091 go run server/cmd/main.go'",
+      url: "http://localhost:9091/ws",
       stdout: "pipe",
       reuseExistingServer: !process.env.CI,
       timeout: 30000,
