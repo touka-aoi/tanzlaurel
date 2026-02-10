@@ -175,6 +175,52 @@ func TestBoneDataRoundTrip(t *testing.T) {
 	}
 }
 
+func TestActor2DSpawnRoundTrip(t *testing.T) {
+	original := &Actor2DSpawn{
+		Position: Position2D{X: 10.0, Y: 20.0},
+	}
+
+	encoded := original.Encode()
+	if len(encoded) != Position2DSize {
+		t.Errorf("encoded size = %d, want %d", len(encoded), Position2DSize)
+	}
+
+	decoded, err := ParseActor2DSpawn(encoded)
+	if err != nil {
+		t.Fatalf("ParseActor2DSpawn failed: %v", err)
+	}
+
+	if !floatEqual(decoded.Position.X, original.Position.X) {
+		t.Errorf("Position.X = %f, want %f", decoded.Position.X, original.Position.X)
+	}
+	if !floatEqual(decoded.Position.Y, original.Position.Y) {
+		t.Errorf("Position.Y = %f, want %f", decoded.Position.Y, original.Position.Y)
+	}
+}
+
+func TestActor2DUpdateRoundTrip(t *testing.T) {
+	original := &Actor2DUpdate{
+		Position: Position2D{X: 5.0, Y: -3.0},
+	}
+
+	encoded := original.Encode()
+	if len(encoded) != Position2DSize {
+		t.Errorf("encoded size = %d, want %d", len(encoded), Position2DSize)
+	}
+
+	decoded, err := ParseActor2DUpdate(encoded)
+	if err != nil {
+		t.Fatalf("ParseActor2DUpdate failed: %v", err)
+	}
+
+	if !floatEqual(decoded.Position.X, original.Position.X) {
+		t.Errorf("Position.X = %f, want %f", decoded.Position.X, original.Position.X)
+	}
+	if !floatEqual(decoded.Position.Y, original.Position.Y) {
+		t.Errorf("Position.Y = %f, want %f", decoded.Position.Y, original.Position.Y)
+	}
+}
+
 func TestActor3DSpawnRoundTrip(t *testing.T) {
 	original := &Actor3DSpawn{
 		Position: Position{
