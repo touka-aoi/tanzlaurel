@@ -14,6 +14,8 @@ export const DATA_TYPE_CONTROL = 4;
 // Control SubType
 export const CONTROL_SUBTYPE_JOIN = 1;
 export const CONTROL_SUBTYPE_LEAVE = 2;
+export const CONTROL_SUBTYPE_PING = 4;
+export const CONTROL_SUBTYPE_PONG = 5;
 export const CONTROL_SUBTYPE_ASSIGN = 7;
 
 // KeyMask

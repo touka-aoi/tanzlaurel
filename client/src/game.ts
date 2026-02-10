@@ -4,6 +4,8 @@ import type { Actor } from "./protocol";
 import {
   CONTROL_SUBTYPE_ASSIGN,
   CONTROL_SUBTYPE_LEAVE,
+  CONTROL_SUBTYPE_PING,
+  CONTROL_SUBTYPE_PONG,
   DATA_TYPE_ACTOR,
   DATA_TYPE_CONTROL,
   HEADER_SIZE,
@@ -82,6 +84,10 @@ export class Game {
         const joinMsg = encodeJoinMessage(this.mySessionId, this.seq++, null);
         this.ws.send(joinMsg);
         eventLogger.log("control", "info", "Sent JOIN (auto-assign room)");
+      } else if (subType === CONTROL_SUBTYPE_PING && this.mySessionId !== null) {
+        const pongMsg = encodeControlMessage(this.mySessionId, this.seq++, CONTROL_SUBTYPE_PONG);
+        this.ws.send(pongMsg);
+        eventLogger.log("control", "debug", "Received PING, sent PONG");
       }
     } else if (dataType === DATA_TYPE_ACTOR) {
       try {

@@ -95,6 +95,13 @@ func (se *SessionEndpoint) Run() error {
 		return err
 	}
 
+	// Assign後にHeartbeatServiceを起動（クライアントがsessionIdを持った状態でpongを返せるようにする）
+	heartbeat := NewHeartbeatService(5*time.Second, se.session, se.writeCh)
+	eg.Go(func() error {
+		heartbeat.Run(ctx)
+		return nil
+	})
+
 	if err := eg.Wait(); err != nil {
 		return err
 	}
@@ -147,6 +154,7 @@ func (se *SessionEndpoint) readLoop(ctx context.Context) {
 				se.sendCtrlEvent(ctx, endpointEvent{kind: evClose, err: err})
 				return
 			}
+			se.session.TouchRead()
 			se.handleData(ctx, data)
 		}
 	}
@@ -278,6 +286,9 @@ func (se *SessionEndpoint) handleControlMessage(ctx context.Context, subType Con
 		se.pubsub.Publish(ctx, roomTopic, Message{SessionID: se.session.ID(), Data: data})
 		slog.InfoContext(ctx, "session left room", "sessionID", se.session.ID(), "roomID", se.roomID)
 		se.roomID = RoomID{}
+	case ControlSubTypePong:
+		slog.DebugContext(ctx, "received pong", "sessionID", se.session.ID())
+		se.sendCtrlEvent(ctx, endpointEvent{kind: evPong})
 	}
 }
 
