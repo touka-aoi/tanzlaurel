@@ -78,15 +78,21 @@ PayloadHeader定義
 
 ```
 dataType (u8)
-├── 1: input    - ユーザー入力
-├── 2: actor    - モーション・移動データ
-├── 3: voice    - 音声
-└── 4: control  - コントロール
+├── 1: input     - ユーザー入力
+├── 2: actor2D   - 2Dモーション・移動データ
+├── 3: voice     - 音声
+├── 4: control   - コントロール
+└── 5: actor3D   - 3Dモーション・移動データ（ボーン含む）
 
-actor subType (u8)
-├── 1: spawn    - キャラ生成
-├── 2: update   - キャラ更新
-└── 3: despawn  - キャラ削除
+actor2D subType (u8)
+├── 1: spawn    - 2Dキャラ生成
+├── 2: update   - 2Dキャラ更新
+└── 3: despawn  - 2Dキャラ削除
+
+actor3D subType (u8)
+├── 1: spawn    - 3Dキャラ生成
+├── 2: update   - 3Dキャラ更新（ボーンデータ含む）
+└── 3: despawn  - 3Dキャラ削除
 
 control subType (u8)
 ├── 1: join     - ルーム参加
@@ -94,7 +100,8 @@ control subType (u8)
 ├── 3: kick     - 強制退出
 ├── 4: ping     - ハートビート要求
 ├── 5: pong     - ハートビート応答
-└── 6: error    - エラー通知
+├── 6: error    - エラー通知
+└── 7: assign   - セッションID通知
 ```
 
 ---
@@ -114,7 +121,22 @@ input payload (4バイト)
   keyMask    u32  (4)  - キー入力ビットマスク (W/A/S/D/Jump等)
 ```
 
-### Actor Position (28 bytes)
+### Actor2D Position (8 bytes)
+
+```
+Position2D:
+┌─────┬─────┐
+│  x  │  y  │
+│(4B) │(4B) │
+└─────┴─────┘
+ 0-3   4-7
+
+actor2D position (8バイト)
+  x          f32  (4)
+  y          f32  (4)
+```
+
+### Actor3D Position (28 bytes)
 
 ```
 Position:
@@ -171,27 +193,51 @@ LeavePayload:
   (ペイロードなし - 現在のルームから退出)
 ```
 
-### Actor Spawn
+### Actor2D Spawn
 
 ```
-ActorSpawn:
+Actor2DSpawn:
+┌─────────────────────────────┐
+│      Position2D (8B)        │
+└─────────────────────────────┘
+
+actor2D spawn (8バイト)
+  position   Position2D (8)
+```
+
+### Actor2D Update
+
+```
+Actor2DUpdate:
+┌─────────────────────────────┐
+│      Position2D (8B)        │
+└─────────────────────────────┘
+
+actor2D update (8バイト)
+  position   Position2D (8)
+```
+
+### Actor3D Spawn
+
+```
+Actor3DSpawn:
 ┌─────────────────────────────┐
 │       Position (28B)        │
 └─────────────────────────────┘
 
-actor spawn (28バイト)
+actor3D spawn (28バイト)
   position   Position (28)
 ```
 
-### Actor Update (スーパーユーザー用)
+### Actor3D Update (スーパーユーザー用)
 
 ```
-ActorUpdate:
+Actor3DUpdate:
 ┌───────────────┬─────────────────────────────┬─────────────────────────────────┐
 │  bitmask(16B) │       Position (28B)        │  BoneData × N (17B × N)         │
 └───────────────┴─────────────────────────────┴─────────────────────────────────┘
 
-actor update (スーパーユーザー)
+actor3D update (スーパーユーザー)
   bitmask    [16]byte  - 変更ボーンのビットマスク (最大128ボーン)
   position   28バイト
   bones      17バイト × 変更ボーン数
