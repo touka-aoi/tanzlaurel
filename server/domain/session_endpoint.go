@@ -196,6 +196,16 @@ func (se *SessionEndpoint) close() {
 	if !se.closed.CompareAndSwap(false, true) {
 		return
 	}
+	// Roomからの離脱（cancel前に実行）
+	if !se.roomID.IsEmpty() {
+		roomTopic := Topic("room:" + se.roomID.String())
+		leaveMsg := EncodeLeaveMessage(se.session.ID())
+		se.pubsub.Publish(se.ctx, roomTopic, Message{
+			SessionID: se.session.ID(),
+			Data:      leaveMsg,
+		})
+		se.roomID = RoomID{}
+	}
 	se.cancel()
 	se.session.Close()
 	se.connection.Close()
