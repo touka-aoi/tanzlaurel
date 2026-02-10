@@ -169,6 +169,27 @@ func EncodeLeaveMessage(sessionID SessionID) []byte {
 	return data
 }
 
+// EncodePingMessage はPingメッセージをエンコードする
+// クライアントに死活確認のpingを送信するために使用
+func EncodePingMessage(sessionID SessionID) []byte {
+	header := Header{
+		Version:   1,
+		SessionID: sessionID.Bytes(),
+		Seq:       0,
+		Length:    PayloadHeaderSize,
+		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
+	}
+	payloadHeader := PayloadHeader{
+		DataType: DataTypeControl,
+		SubType:  uint8(ControlSubTypePing),
+	}
+
+	data := make([]byte, HeaderSize+PayloadHeaderSize)
+	copy(data[:HeaderSize], header.Encode())
+	copy(data[HeaderSize:], payloadHeader.Encode())
+	return data
+}
+
 // JoinPayload はルーム参加メッセージのペイロード (16バイト)
 //
 //	roomID  [16]byte  - ルームID (UUID)
