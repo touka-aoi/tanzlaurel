@@ -114,10 +114,6 @@ func (se *SessionEndpoint) Close(ctx context.Context) {
 	se.sendCtrlEvent(ctx, endpointEvent{kind: evClose, err: nil})
 }
 
-func (se *SessionEndpoint) ForceClose() {
-	se.close()
-}
-
 // ownerLoop は論理セッションの状態を監視し、必要に応じて接続の管理を行います。
 func (se *SessionEndpoint) ownerLoop(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
