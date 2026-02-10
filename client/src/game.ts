@@ -10,6 +10,7 @@ import {
   PAYLOAD_HEADER_SIZE,
   decodeActorBroadcast,
   decodeAssignMessage,
+  describeKeyMask,
   encodeControlMessage,
   encodeInputMessage,
   encodeJoinMessage,
@@ -20,6 +21,7 @@ import {
 import { WebSocketClient } from "./websocket";
 import { InputManager } from "./input";
 import { Renderer } from "./renderer";
+import { eventLogger } from "./event-logger";
 
 const SERVER_URL = "ws://localhost:9090/ws";
 
@@ -32,6 +34,7 @@ export class Game {
   private mySessionId: Uint8Array | null = null;
   private seq: number = 0;
   private connected: boolean = false;
+  private prevKeyMask: number = -1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.input = new InputManager();
@@ -51,20 +54,19 @@ export class Game {
 
   private onConnect(): void {
     this.connected = true;
-    console.log("Connected to server, waiting for session ID...");
-    // Assignメッセージを待つ（ここではJoinを送信しない）
+    eventLogger.log("connection", "info", "Connected to server");
   }
 
   private onDisconnect(): void {
     this.connected = false;
     this.actors = [];
     this.mySessionId = null;
-    console.log("Disconnected from server");
+    eventLogger.log("connection", "warn", "Disconnected from server");
   }
 
   private onMessage(data: ArrayBuffer): void {
     if (data.byteLength < HEADER_SIZE + PAYLOAD_HEADER_SIZE) {
-      console.error("Message too short:", data.byteLength, "bytes, need at least", HEADER_SIZE + PAYLOAD_HEADER_SIZE);
+      eventLogger.log("error", "error", `Message too short: ${data.byteLength} bytes`);
       return;
     }
 
@@ -73,23 +75,35 @@ export class Game {
     if (dataType === DATA_TYPE_CONTROL) {
       const subType = getControlSubType(data);
       if (subType === CONTROL_SUBTYPE_ASSIGN) {
-        // セッションID通知を受信
         this.mySessionId = decodeAssignMessage(data);
-        console.log("Received session ID:", sessionIdToString(this.mySessionId));
+        const sid = sessionIdToString(this.mySessionId);
+        eventLogger.log("control", "info", `Session assigned: ${sid}`, { sessionId: sid });
 
-        // Joinメッセージを送信（RoomID空=サーバー自動割当）
         const joinMsg = encodeJoinMessage(this.mySessionId, this.seq++, null);
         this.ws.send(joinMsg);
-        console.log("Sent Join message (auto-assign room)");
+        eventLogger.log("control", "info", "Sent JOIN (auto-assign room)");
       }
     } else if (dataType === DATA_TYPE_ACTOR) {
       try {
         this.actors = decodeActorBroadcast(data);
+        eventLogger.logActor(this.actors.length, {
+          actors: this.actors.map((a) => ({
+            sessionId: sessionIdToString(a.sessionId),
+            x: a.x.toFixed(1),
+            y: a.y.toFixed(1),
+          })),
+        });
       } catch (e) {
-        console.error("Failed to decode actor broadcast:", e, "byteLength:", data.byteLength);
+        eventLogger.log("error", "error", "Failed to decode actor broadcast", {
+          error: String(e),
+          byteLength: data.byteLength,
+        });
       }
     } else {
-      console.warn("Unknown dataType:", dataType, "byteLength:", data.byteLength);
+      eventLogger.log("error", "warn", `Unknown dataType: ${dataType}`, {
+        dataType,
+        byteLength: data.byteLength,
+      });
     }
   }
 
@@ -100,7 +114,12 @@ export class Game {
       if (keyMask !== 0) {
         const msg = encodeInputMessage(this.mySessionId, this.seq++, keyMask);
         this.ws.send(msg);
+        if (keyMask !== this.prevKeyMask) {
+          const desc = describeKeyMask(keyMask);
+          eventLogger.log("input", "debug", `Input: ${desc} (mask=0x${keyMask.toString(16).padStart(2, "0")})`);
+        }
       }
+      this.prevKeyMask = keyMask;
     }
 
     // 描画

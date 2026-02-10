@@ -205,6 +205,16 @@ export function sessionIdEquals(a: Uint8Array | null, b: Uint8Array | null): boo
   return true;
 }
 
+// KeyMaskを人間が読める文字列に変換
+export function describeKeyMask(mask: number): string {
+  const keys: string[] = [];
+  if (mask & KEY_W) keys.push("W");
+  if (mask & KEY_A) keys.push("A");
+  if (mask & KEY_S) keys.push("S");
+  if (mask & KEY_D) keys.push("D");
+  return keys.join("+") || "none";
+}
+
 // SessionIDを文字列に変換（デバッグ用）
 export function sessionIdToString(sessionId: Uint8Array): string {
   return Array.from(sessionId)

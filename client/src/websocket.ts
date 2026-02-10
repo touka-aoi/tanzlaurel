@@ -1,5 +1,7 @@
 // WebSocket 接続管理
 
+import { eventLogger } from "./event-logger";
+
 export type MessageHandler = (data: ArrayBuffer) => void;
 export type ConnectionHandler = () => void;
 
@@ -27,7 +29,6 @@ export class WebSocketClient {
     this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = () => {
-      console.log("WebSocket connected");
       this.onConnect();
     };
 
@@ -38,12 +39,11 @@ export class WebSocketClient {
     };
 
     this.ws.onclose = () => {
-      console.log("WebSocket disconnected");
       this.onDisconnect();
     };
 
-    this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+    this.ws.onerror = () => {
+      eventLogger.log("error", "error", "WebSocket error");
     };
   }
 

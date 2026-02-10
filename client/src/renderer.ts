@@ -25,18 +25,18 @@ export class Renderer {
   }
 
   clear(): void {
-    this.ctx.fillStyle = "#1a1a1a";
+    this.ctx.fillStyle = "#FAFAFA";
     this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   }
 
   drawMap(): void {
     // マップ境界 (100x100 ワールドユニット)
-    this.ctx.strokeStyle = "#444";
+    this.ctx.strokeStyle = "#D0D0D0";
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(0, 0, 100 * SCALE, 100 * SCALE);
 
     // グリッド線 (10ユニット間隔)
-    this.ctx.strokeStyle = "#333";
+    this.ctx.strokeStyle = "#E8E8E8";
     this.ctx.lineWidth = 1;
     for (let i = 10; i < 100; i += 10) {
       // 縦線
@@ -65,11 +65,11 @@ export class Renderer {
 
     this.ctx.beginPath();
     this.ctx.arc(screenX, screenY, ACTOR_RADIUS, 0, Math.PI * 2);
-    this.ctx.fillStyle = isMe ? "#4ade80" : "#60a5fa"; // 緑 vs 青
+    this.ctx.fillStyle = isMe ? "#16a34a" : "#2563eb"; // 緑 vs 青
     this.ctx.fill();
 
     // 枠線
-    this.ctx.strokeStyle = isMe ? "#22c55e" : "#3b82f6";
+    this.ctx.strokeStyle = isMe ? "#15803d" : "#1d4ed8";
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
   }
