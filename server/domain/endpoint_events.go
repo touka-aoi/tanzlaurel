@@ -9,11 +9,6 @@ const (
 	// I/O
 	evPong // pong を受信した
 
-	// error
-	evReadError     // 読み取りエラー
-	evWriteError    // 書き込みエラー
-	evDispatchError // ディスパッチエラー
-
 	// ctrl
 	evClose // セッション終了
 )
