@@ -35,10 +35,11 @@ type Header struct {
 type DataType uint8
 
 const (
-	DataTypeInput   DataType = 1
-	DataTypeActor   DataType = 2
-	DataTypeVoice   DataType = 3
-	DataTypeControl DataType = 4
+	DataTypeInput    DataType = 1
+	DataTypeActor2D  DataType = 2
+	DataTypeVoice    DataType = 3
+	DataTypeControl  DataType = 4
+	DataTypeActor3D  DataType = 5
 )
 
 // ActorSubType はactorメッセージのサブタイプ
@@ -198,9 +199,17 @@ func (j *JoinPayload) Encode() []byte {
 
 // サイズ定数
 const (
-	PositionSize = 28 // 7 * 4 bytes (7 float32)
-	BoneDataSize = 17 // 1 (BoneID) + 4 * 4 bytes (4 float32)
+	Position2DSize = 8  // 2 * float32
+	PositionSize   = 28 // 7 * 4 bytes (7 float32)
+	BoneDataSize   = 17 // 1 (BoneID) + 4 * 4 bytes (4 float32)
 )
+
+// Position2D は2D位置データ (8バイト)
+//
+//	x, y float32 (8) - 位置
+type Position2D struct {
+	X, Y float32
+}
 
 // Position は位置・姿勢データ (28バイト)
 //
@@ -235,25 +244,39 @@ func BoneNameToID(name string) uint8 {
 	return uint8(name[0] - '0') // 仮実装: 最初の文字をIDとして返す
 }
 
-// ActorSpawn はキャラ生成メッセージ
-type ActorSpawn struct {
+// Actor2DSpawn は2Dキャラ生成メッセージ
+type Actor2DSpawn struct {
+	Position Position2D
+}
+
+// Actor2DUpdate は2Dキャラ更新メッセージ
+type Actor2DUpdate struct {
+	Position Position2D
+}
+
+// Actor2DDespawn は2Dキャラ削除メッセージ
+// 削除対象はヘッダーのsessionIDで特定
+type Actor2DDespawn struct{}
+
+// Actor3DSpawn はキャラ生成メッセージ
+type Actor3DSpawn struct {
 	Position Position
 }
 
-// ActorUpdate はキャラ更新メッセージ（スーパーユーザー用）
+// Actor3DUpdate はキャラ更新メッセージ（スーパーユーザー用）
 //
 //	bitmask  [16]byte - 変更ボーンのビットマスク (128ボーン対応)
 //	position Position - 位置・姿勢
 //	bones    []BoneData - ボーンデータ（可変長）
-type ActorUpdate struct {
+type Actor3DUpdate struct {
 	Bitmask  [16]byte // 変更ボーンのビットマスク (128ボーン対応)
 	Position Position
 	Bones    []BoneData
 }
 
-// ActorDespawn はキャラ削除メッセージ
+// Actor3DDespawn はキャラ削除メッセージ
 // 削除対象はヘッダーのsessionIDで特定
-type ActorDespawn struct{}
+type Actor3DDespawn struct{}
 
 // InputPayload はユーザー入力 (4バイト)
 //
@@ -264,12 +287,35 @@ type InputPayload struct {
 
 // エラー定義
 var (
-	ErrInvalidPositionSize     = errors.New("invalid position size")
-	ErrInvalidBoneDataSize     = errors.New("invalid bone data size")
-	ErrInvalidActorSpawnSize   = errors.New("invalid actor spawn size")
-	ErrInvalidActorUpdateSize  = errors.New("invalid actor update size")
-	ErrInvalidInputPayloadSize = errors.New("invalid input payload size")
+	ErrInvalidPosition2DData    = errors.New("invalid position2d data: expected 8 bytes")
+	ErrInvalidPositionSize      = errors.New("invalid position size")
+	ErrInvalidBoneDataSize      = errors.New("invalid bone data size")
+	ErrInvalidActor2DSpawnSize  = errors.New("invalid actor2d spawn size")
+	ErrInvalidActor2DUpdateSize = errors.New("invalid actor2d update size")
+	ErrInvalidActor3DSpawnSize  = errors.New("invalid actor3d spawn size")
+	ErrInvalidActor3DUpdateSize = errors.New("invalid actor3d update size")
+	ErrInvalidInputPayloadSize  = errors.New("invalid input payload size")
 )
+
+// ParsePosition2D はバイト列からPosition2Dをパースする
+func ParsePosition2D(data []byte) (*Position2D, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidPosition2DData
+	}
+
+	return &Position2D{
+		X: math.Float32frombits(byteOrder.Uint32(data[0:4])),
+		Y: math.Float32frombits(byteOrder.Uint32(data[4:8])),
+	}, nil
+}
+
+// Encode はPosition2Dをバイト列にエンコードする
+func (p *Position2D) Encode() []byte {
+	buf := make([]byte, Position2DSize)
+	byteOrder.PutUint32(buf[0:4], math.Float32bits(p.X))
+	byteOrder.PutUint32(buf[4:8], math.Float32bits(p.Y))
+	return buf
+}
 
 // ParsePosition はバイト列からPositionをパースする
 func ParsePosition(data []byte) (*Position, error) {
@@ -327,10 +373,52 @@ func (b *BoneData) Encode() []byte {
 	return data
 }
 
-// ParseActorSpawn はバイト列からActorSpawnをパースする
-func ParseActorSpawn(data []byte) (*ActorSpawn, error) {
+// ParseActor2DSpawn はバイト列からActor2DSpawnをパースする
+func ParseActor2DSpawn(data []byte) (*Actor2DSpawn, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidActor2DSpawnSize
+	}
+
+	pos, err := ParsePosition2D(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Actor2DSpawn{
+		Position: *pos,
+	}, nil
+}
+
+// Encode はActor2DSpawnをバイト列にエンコードする
+func (a *Actor2DSpawn) Encode() []byte {
+	return a.Position.Encode()
+}
+
+// ParseActor2DUpdate はバイト列からActor2DUpdateをパースする
+func ParseActor2DUpdate(data []byte) (*Actor2DUpdate, error) {
+	if len(data) < Position2DSize {
+		return nil, ErrInvalidActor2DUpdateSize
+	}
+
+	pos, err := ParsePosition2D(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Actor2DUpdate{
+		Position: *pos,
+	}, nil
+}
+
+// Encode はActor2DUpdateをバイト列にエンコードする
+func (a *Actor2DUpdate) Encode() []byte {
+	return a.Position.Encode()
+}
+
+// ParseActor3DSpawn はバイト列からActor3DSpawnをパースする
+func ParseActor3DSpawn(data []byte) (*Actor3DSpawn, error) {
 	if len(data) < PositionSize {
-		return nil, ErrInvalidActorSpawnSize
+		return nil, ErrInvalidActor3DSpawnSize
 	}
 
 	pos, err := ParsePosition(data)
@@ -338,24 +426,24 @@ func ParseActorSpawn(data []byte) (*ActorSpawn, error) {
 		return nil, err
 	}
 
-	return &ActorSpawn{
+	return &Actor3DSpawn{
 		Position: *pos,
 	}, nil
 }
 
-// Encode はActorSpawnをバイト列にエンコードする
-func (a *ActorSpawn) Encode() []byte {
+// Encode はActor3DSpawnをバイト列にエンコードする
+func (a *Actor3DSpawn) Encode() []byte {
 	return a.Position.Encode()
 }
 
 // BitmaskSize はビットマスクのサイズ（16バイト = 128ボーン対応）
 const BitmaskSize = 16
 
-// ParseActorUpdate はバイト列からActorUpdateをパースする
-func ParseActorUpdate(data []byte) (*ActorUpdate, error) {
+// ParseActor3DUpdate はバイト列からActor3DUpdateをパースする
+func ParseActor3DUpdate(data []byte) (*Actor3DUpdate, error) {
 	minSize := BitmaskSize + PositionSize
 	if len(data) < minSize {
-		return nil, ErrInvalidActorUpdateSize
+		return nil, ErrInvalidActor3DUpdateSize
 	}
 
 	var bitmask [16]byte
@@ -373,7 +461,7 @@ func ParseActorUpdate(data []byte) (*ActorUpdate, error) {
 	offset := BitmaskSize + PositionSize
 	for i := 0; i < boneCount; i++ {
 		if offset+BoneDataSize > len(data) {
-			return nil, ErrInvalidActorUpdateSize
+			return nil, ErrInvalidActor3DUpdateSize
 		}
 		bone, err := ParseBoneData(data[offset:])
 		if err != nil {
@@ -383,15 +471,15 @@ func ParseActorUpdate(data []byte) (*ActorUpdate, error) {
 		offset += BoneDataSize
 	}
 
-	return &ActorUpdate{
+	return &Actor3DUpdate{
 		Bitmask:  bitmask,
 		Position: *pos,
 		Bones:    bones,
 	}, nil
 }
 
-// Encode はActorUpdateをバイト列にエンコードする
-func (a *ActorUpdate) Encode() []byte {
+// Encode はActor3DUpdateをバイト列にエンコードする
+func (a *Actor3DUpdate) Encode() []byte {
 	size := BitmaskSize + PositionSize + len(a.Bones)*BoneDataSize
 	data := make([]byte, size)
 

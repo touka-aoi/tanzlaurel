@@ -43,7 +43,7 @@ func TestHeaderRoundTrip(t *testing.T) {
 
 func TestPayloadHeaderRoundTrip(t *testing.T) {
 	original := &PayloadHeader{
-		DataType: DataTypeActor,
+		DataType: DataTypeActor2D,
 		SubType:  uint8(ActorSubTypeSpawn),
 	}
 
@@ -62,6 +62,44 @@ func TestPayloadHeaderRoundTrip(t *testing.T) {
 	}
 	if decoded.SubType != original.SubType {
 		t.Errorf("SubType = %d, want %d", decoded.SubType, original.SubType)
+	}
+}
+
+func TestPosition2DRoundTrip(t *testing.T) {
+	original := &Position2D{X: 1.5, Y: -2.5}
+
+	encoded := original.Encode()
+	if len(encoded) != Position2DSize {
+		t.Fatalf("encoded size = %d, want %d", len(encoded), Position2DSize)
+	}
+
+	decoded, err := ParsePosition2D(encoded)
+	if err != nil {
+		t.Fatalf("ParsePosition2D failed: %v", err)
+	}
+
+	if decoded.X != original.X || decoded.Y != original.Y {
+		t.Errorf("decoded = %+v, want %+v", decoded, original)
+	}
+}
+
+func TestPosition2DParseInvalidData(t *testing.T) {
+	_, err := ParsePosition2D([]byte{0x01, 0x02, 0x03})
+	if err != ErrInvalidPosition2DData {
+		t.Errorf("expected ErrInvalidPosition2DData, got %v", err)
+	}
+}
+
+func TestPosition2DZero(t *testing.T) {
+	pos := &Position2D{X: 0, Y: 0}
+	encoded := pos.Encode()
+	decoded, err := ParsePosition2D(encoded)
+	if err != nil {
+		t.Fatalf("ParsePosition2D failed: %v", err)
+	}
+
+	if decoded.X != 0 || decoded.Y != 0 {
+		t.Errorf("decoded = %+v, want {0, 0}", decoded)
 	}
 }
 
@@ -137,8 +175,54 @@ func TestBoneDataRoundTrip(t *testing.T) {
 	}
 }
 
-func TestActorSpawnRoundTrip(t *testing.T) {
-	original := &ActorSpawn{
+func TestActor2DSpawnRoundTrip(t *testing.T) {
+	original := &Actor2DSpawn{
+		Position: Position2D{X: 10.0, Y: 20.0},
+	}
+
+	encoded := original.Encode()
+	if len(encoded) != Position2DSize {
+		t.Errorf("encoded size = %d, want %d", len(encoded), Position2DSize)
+	}
+
+	decoded, err := ParseActor2DSpawn(encoded)
+	if err != nil {
+		t.Fatalf("ParseActor2DSpawn failed: %v", err)
+	}
+
+	if !floatEqual(decoded.Position.X, original.Position.X) {
+		t.Errorf("Position.X = %f, want %f", decoded.Position.X, original.Position.X)
+	}
+	if !floatEqual(decoded.Position.Y, original.Position.Y) {
+		t.Errorf("Position.Y = %f, want %f", decoded.Position.Y, original.Position.Y)
+	}
+}
+
+func TestActor2DUpdateRoundTrip(t *testing.T) {
+	original := &Actor2DUpdate{
+		Position: Position2D{X: 5.0, Y: -3.0},
+	}
+
+	encoded := original.Encode()
+	if len(encoded) != Position2DSize {
+		t.Errorf("encoded size = %d, want %d", len(encoded), Position2DSize)
+	}
+
+	decoded, err := ParseActor2DUpdate(encoded)
+	if err != nil {
+		t.Fatalf("ParseActor2DUpdate failed: %v", err)
+	}
+
+	if !floatEqual(decoded.Position.X, original.Position.X) {
+		t.Errorf("Position.X = %f, want %f", decoded.Position.X, original.Position.X)
+	}
+	if !floatEqual(decoded.Position.Y, original.Position.Y) {
+		t.Errorf("Position.Y = %f, want %f", decoded.Position.Y, original.Position.Y)
+	}
+}
+
+func TestActor3DSpawnRoundTrip(t *testing.T) {
+	original := &Actor3DSpawn{
 		Position: Position{
 			X: 10.0, Y: 20.0, Z: 30.0,
 			QX: 0.0, QY: 0.0, QZ: 0.0, QW: 1.0,
@@ -150,9 +234,9 @@ func TestActorSpawnRoundTrip(t *testing.T) {
 		t.Errorf("encoded size = %d, want %d", len(encoded), PositionSize)
 	}
 
-	decoded, err := ParseActorSpawn(encoded)
+	decoded, err := ParseActor3DSpawn(encoded)
 	if err != nil {
-		t.Fatalf("ParseActorSpawn failed: %v", err)
+		t.Fatalf("ParseActor3DSpawn failed: %v", err)
 	}
 
 	if !floatEqual(decoded.Position.X, original.Position.X) {
@@ -163,8 +247,8 @@ func TestActorSpawnRoundTrip(t *testing.T) {
 	}
 }
 
-func TestActorUpdateRoundTrip(t *testing.T) {
-	original := &ActorUpdate{
+func TestActor3DUpdateRoundTrip(t *testing.T) {
+	original := &Actor3DUpdate{
 		Bitmask: [16]byte{0x03, 0x00}, // ボーン0と1が有効
 		Position: Position{
 			X: 5.0, Y: 10.0, Z: 15.0,
@@ -182,9 +266,9 @@ func TestActorUpdateRoundTrip(t *testing.T) {
 		t.Errorf("encoded size = %d, want %d", len(encoded), expectedSize)
 	}
 
-	decoded, err := ParseActorUpdate(encoded)
+	decoded, err := ParseActor3DUpdate(encoded)
 	if err != nil {
-		t.Fatalf("ParseActorUpdate failed: %v", err)
+		t.Fatalf("ParseActor3DUpdate failed: %v", err)
 	}
 
 	if decoded.Bitmask != original.Bitmask {

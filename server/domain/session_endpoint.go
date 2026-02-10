@@ -228,7 +228,7 @@ func (se *SessionEndpoint) handleData(ctx context.Context, data []byte) {
 	case DataTypeControl:
 		se.handleControlMessage(ctx, ControlSubType(payloadHeader.SubType), data)
 		return
-	default:
+	case DataTypeInput, DataTypeActor2D:
 		// データメッセージをroom topicに転送
 		if se.roomID.IsEmpty() {
 			slog.WarnContext(ctx, "received data message before joining a room", "sessionID", se.session.ID())
@@ -239,6 +239,8 @@ func (se *SessionEndpoint) handleData(ctx context.Context, data []byte) {
 			SessionID: se.session.ID(),
 			Data:      data,
 		})
+	default:
+		slog.WarnContext(ctx, "unknown data type", "dataType", payloadHeader.DataType)
 	}
 }
 

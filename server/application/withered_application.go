@@ -66,10 +66,8 @@ func (app *WitheredApplication) HandleMessage(ctx context.Context, sessionID dom
 	switch payloadHeader.DataType {
 	case domain.DataTypeInput:
 		return app.handleInput(ctx, sessionID, header, payload)
-	case domain.DataTypeActor:
-		return app.handleActor(ctx, sessionID, header, payloadHeader.SubType, payload)
-	case domain.DataTypeVoice:
-		return app.handleVoice(ctx, sessionID, header, payload)
+	case domain.DataTypeActor2D:
+		return app.handleActor2D(ctx, sessionID, header, payloadHeader.SubType, payload)
 	case domain.DataTypeControl:
 		return app.handleControl(ctx, sessionID, header, payloadHeader.SubType, payload)
 	default:
@@ -116,46 +114,36 @@ func keyMaskToDirection(keyMask uint32) (dx, dy float32) {
 	return dx, dy
 }
 
-func (app *WitheredApplication) handleActor(ctx context.Context, sessionID domain.SessionID, header *domain.Header, subType uint8, data []byte) error {
+func (app *WitheredApplication) handleActor2D(ctx context.Context, sessionID domain.SessionID, header *domain.Header, subType uint8, data []byte) error {
 	switch domain.ActorSubType(subType) {
 	case domain.ActorSubTypeSpawn:
-		spawn, err := domain.ParseActorSpawn(data)
+		spawn, err := domain.ParseActor2DSpawn(data)
 		if err != nil {
 			return err
 		}
-		slog.DebugContext(ctx, "handleActor:spawn",
+		slog.DebugContext(ctx, "handleActor2D:spawn",
 			"sessionID", sessionID,
 			"seq", header.Seq,
 			"position", spawn.Position,
 		)
 	case domain.ActorSubTypeUpdate:
-		update, err := domain.ParseActorUpdate(data)
+		update, err := domain.ParseActor2DUpdate(data)
 		if err != nil {
 			return err
 		}
-		slog.DebugContext(ctx, "handleActor:update",
+		slog.DebugContext(ctx, "handleActor2D:update",
 			"sessionID", sessionID,
 			"seq", header.Seq,
-			"boneCount", len(update.Bones),
+			"position", update.Position,
 		)
 	case domain.ActorSubTypeDespawn:
-		slog.DebugContext(ctx, "handleActor:despawn",
+		slog.DebugContext(ctx, "handleActor2D:despawn",
 			"sessionID", sessionID,
 			"seq", header.Seq,
 		)
 	default:
-		slog.WarnContext(ctx, "unknown actor subtype", "subType", subType)
+		slog.WarnContext(ctx, "unknown actor2d subtype", "subType", subType)
 	}
-
-	return nil
-}
-
-func (app *WitheredApplication) handleVoice(ctx context.Context, sessionID domain.SessionID, header *domain.Header, data []byte) error {
-	slog.DebugContext(ctx, "handleVoice",
-		"sessionID", sessionID,
-		"seq", header.Seq,
-		"dataLen", len(data),
-	)
 
 	return nil
 }
@@ -216,7 +204,7 @@ func encodeActorBroadcastMessage(payload []byte) []byte {
 		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
 	}
 	payloadHeader := domain.PayloadHeader{
-		DataType: domain.DataTypeActor,
+		DataType: domain.DataTypeActor2D,
 		SubType:  uint8(domain.ActorSubTypeUpdate),
 	}
 
