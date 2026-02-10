@@ -31,6 +31,7 @@ export class Game {
   private ws: WebSocketClient;
   private input: InputManager;
   private renderer: Renderer;
+  private canvas: HTMLCanvasElement;
 
   private actors: Actor[] = [];
   private mySessionId: Uint8Array | null = null;
@@ -39,6 +40,12 @@ export class Game {
   private prevKeyMask: number = -1;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    this.canvas.dataset.connected = "false";
+    this.canvas.dataset.sessionId = "";
+    this.canvas.dataset.roomJoined = "false";
+    this.canvas.dataset.playerCount = "0";
+
     this.input = new InputManager();
     this.renderer = new Renderer(canvas);
     this.ws = new WebSocketClient(
@@ -56,6 +63,7 @@ export class Game {
 
   private onConnect(): void {
     this.connected = true;
+    this.canvas.dataset.connected = "true";
     eventLogger.log("connection", "info", "Connected to server");
   }
 
@@ -63,6 +71,10 @@ export class Game {
     this.connected = false;
     this.actors = [];
     this.mySessionId = null;
+    this.canvas.dataset.connected = "false";
+    this.canvas.dataset.sessionId = "";
+    this.canvas.dataset.roomJoined = "false";
+    this.canvas.dataset.playerCount = "0";
     eventLogger.log("connection", "warn", "Disconnected from server");
   }
 
@@ -79,10 +91,12 @@ export class Game {
       if (subType === CONTROL_SUBTYPE_ASSIGN) {
         this.mySessionId = decodeAssignMessage(data);
         const sid = sessionIdToString(this.mySessionId);
+        this.canvas.dataset.sessionId = sid;
         eventLogger.log("control", "info", `Session assigned: ${sid}`, { sessionId: sid });
 
         const joinMsg = encodeJoinMessage(this.mySessionId, this.seq++, null);
         this.ws.send(joinMsg);
+        this.canvas.dataset.roomJoined = "true";
         eventLogger.log("control", "info", "Sent JOIN (auto-assign room)");
       } else if (subType === CONTROL_SUBTYPE_PING && this.mySessionId !== null) {
         const pongMsg = encodeControlMessage(this.mySessionId, this.seq++, CONTROL_SUBTYPE_PONG);
@@ -92,6 +106,7 @@ export class Game {
     } else if (dataType === DATA_TYPE_ACTOR) {
       try {
         this.actors = decodeActorBroadcast(data);
+        this.canvas.dataset.playerCount = String(this.actors.length);
         eventLogger.logActor(this.actors.length, {
           actors: this.actors.map((a) => ({
             sessionId: sessionIdToString(a.sessionId),

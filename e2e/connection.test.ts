@@ -1,93 +1,38 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("WebSocket Connection", () => {
   test("should connect, receive session ID, join room, and display player", async ({
-    page,
+    gamePage,
   }) => {
-    const logs: string[] = [];
+    await gamePage.goto();
 
-    // コンソールログを監視
-    page.on("console", (msg) => {
-      if (msg.type() === "log") {
-        logs.push(msg.text());
-      }
+    // 接続確認
+    await expect(gamePage.canvas).toHaveAttribute("data-connected", "true", {
+      timeout: 10000,
     });
 
-    // クライアントにアクセス
-    await page.goto("/");
+    // セッションID受信確認（32文字の16進数文字列）
+    await expect(gamePage.canvas).toHaveAttribute(
+      "data-session-id",
+      /^[0-9a-f]{32}$/,
+      { timeout: 10000 }
+    );
 
-    // Canvasが表示されることを確認
-    const canvas = page.locator("canvas#game");
-    await expect(canvas).toBeVisible();
+    // Room参加確認
+    await expect(gamePage.canvas).toHaveAttribute("data-room-joined", "true", {
+      timeout: 10000,
+    });
 
-    // 接続ログを待機
+    // プレイヤー数が1以上であることを確認
+    await expect(gamePage.canvas).toHaveAttribute(
+      "data-player-count",
+      /^[1-9]\d*$/,
+      { timeout: 10000 }
+    );
+
+    // Canvasに緑色のプレイヤーが描画されていることを確認
     await expect
-      .poll(() => logs.some((log) => log.includes("Connected to server")), {
-        timeout: 10000,
-        message: "Should connect to server",
-      })
-      .toBe(true);
-
-    // セッションID受信を待機
-    await expect
-      .poll(() => logs.some((log) => log.includes("Received session ID:")), {
-        timeout: 10000,
-        message: "Should receive session ID",
-      })
-      .toBe(true);
-
-    // Join送信を待機
-    await expect
-      .poll(() => logs.some((log) => log.includes("Sent Join message")), {
-        timeout: 10000,
-        message: "Should send Join message",
-      })
-      .toBe(true);
-
-    // Canvasから緑色のプレイヤーが描画されているかポーリングで確認
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() => {
-            const canvas = document.querySelector(
-              "canvas#game"
-            ) as HTMLCanvasElement | null;
-            if (!canvas) return false;
-
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return false;
-
-            const imageData = ctx.getImageData(
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-            const data = imageData.data;
-
-            // 緑色 (#4ade80) のRGB値: R=74, G=222, B=128
-            // 許容誤差を持たせて検索
-            for (let i = 0; i < data.length; i += 4) {
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
-
-              // 緑色のプレイヤーを検出 (誤差 ±10)
-              if (
-                Math.abs(r - 74) < 10 &&
-                Math.abs(g - 222) < 10 &&
-                Math.abs(b - 128) < 10
-              ) {
-                return true;
-              }
-            }
-            return false;
-          }),
-        {
-          timeout: 10000,
-          message: "Should render green player on canvas",
-        }
-      )
+      .poll(() => gamePage.hasGreenPlayer(), { timeout: 10000 })
       .toBe(true);
   });
 });
