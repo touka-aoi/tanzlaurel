@@ -9,8 +9,10 @@ import (
 
 // Field はマップとアクターを管理する構造体です。
 type Field struct {
-	Map    *Map
-	Actors map[domain.SessionID]*Actor
+	Map          *Map
+	Actors       map[domain.SessionID]*Actor
+	Bullets      []*Bullet
+	nextBulletID uint16
 }
 
 // ActorState はアクターの状態と種別をビットマスクで表現します。
@@ -126,6 +128,73 @@ func (f *Field) TickRespawns() {
 			actor.Position.Y = f.Map.WorldHeight() / 2
 		}
 	}
+}
+
+// AddBullet は弾丸を生成してフィールドに追加します。
+func (f *Field) AddBullet(ownerID domain.SessionID, position, velocity domain.Position2D) {
+	f.nextBulletID++
+	bullet := &Bullet{
+		ID:       f.nextBulletID,
+		OwnerID:  ownerID,
+		Position: position,
+		Velocity: velocity,
+		TTL:      BulletTTL,
+	}
+	f.Bullets = append(f.Bullets, bullet)
+}
+
+// TickBullets は全弾丸の位置を更新し、TTLを減算します。
+func (f *Field) TickBullets() {
+	for _, b := range f.Bullets {
+		b.Position.X += b.Velocity.X
+		b.Position.Y += b.Velocity.Y
+		b.TTL--
+	}
+}
+
+// CheckBulletCollisions は弾丸とアクターの衝突を判定します。
+// 命中した弾丸は除去され、HitEventのスライスを返します。
+func (f *Field) CheckBulletCollisions() []HitEvent {
+	var hits []HitEvent
+	hitRadius := BulletRadius + ActorRadius
+	hitRadiusSq := hitRadius * hitRadius
+
+	surviving := f.Bullets[:0]
+	for _, b := range f.Bullets {
+		hit := false
+		for _, actor := range f.Actors {
+			if actor.SessionID == b.OwnerID || !actor.IsAlive() {
+				continue
+			}
+			dx := b.Position.X - actor.Position.X
+			dy := b.Position.Y - actor.Position.Y
+			if dx*dx+dy*dy <= hitRadiusSq {
+				hits = append(hits, HitEvent{
+					BulletID:   b.ID,
+					VictimID:   actor.SessionID,
+					AttackerID: b.OwnerID,
+				})
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			surviving = append(surviving, b)
+		}
+	}
+	f.Bullets = surviving
+	return hits
+}
+
+// RemoveExpiredBullets はTTLが0以下の弾丸を除去します。
+func (f *Field) RemoveExpiredBullets() {
+	surviving := f.Bullets[:0]
+	for _, b := range f.Bullets {
+		if b.TTL > 0 {
+			surviving = append(surviving, b)
+		}
+	}
+	f.Bullets = surviving
 }
 
 func clamp(v, min, max float32) float32 {

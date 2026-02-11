@@ -60,7 +60,7 @@
 **サーバー側**
 
 5. **`server/application/bullet.go` - 新規作成**
-   - `Bullet` struct: `ID(u32)`, `OwnerID`, `Position`, `Velocity`, `TTL`
+   - `Bullet` struct: `ID(u16)`, `OwnerID`, `Position`, `Velocity`, `TTL`
    - 定数: `BulletSpeed`, `BulletTTL`, `BulletRadius`, `ActorRadius`, `ShootCooldown`
    - `HitEvent` struct: `BulletID`, `VictimID`, `AttackerID`
 
@@ -131,7 +131,7 @@
 SessionID [16]byte | X f32 | Y f32 | HP u8 | State u8
 ```
 
-### 弾丸 (36 bytes/bullet)
+### 弾丸 (34 bytes/bullet)
 ```
 BulletID u16 | OwnerID [16]byte | X f32 | Y f32 | VX f32 | VY f32
 ```

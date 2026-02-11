@@ -1,6 +1,6 @@
 // Canvas 描画
 
-import type { Actor } from "./protocol";
+import type { Actor, Bullet } from "./protocol";
 import { sessionIdEquals, isAlive, isBot } from "./protocol";
 
 const CANVAS_WIDTH = 800;
@@ -115,9 +115,22 @@ export class Renderer {
     this.ctx.globalAlpha = prevAlpha;
   }
 
-  render(actors: Actor[], mySessionId: Uint8Array | null): void {
+  drawBullets(bullets: Bullet[]): void {
+    const BULLET_RADIUS = 3;
+    for (const bullet of bullets) {
+      const screenX = bullet.x * SCALE;
+      const screenY = bullet.y * SCALE;
+      this.ctx.beginPath();
+      this.ctx.arc(screenX, screenY, BULLET_RADIUS, 0, Math.PI * 2);
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.fill();
+    }
+  }
+
+  render(actors: Actor[], bullets: Bullet[], mySessionId: Uint8Array | null): void {
     this.clear();
     this.drawMap();
+    this.drawBullets(bullets);
     this.drawActors(actors, mySessionId);
   }
 }

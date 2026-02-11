@@ -56,6 +56,20 @@ export interface Actor {
   state: number;
 }
 
+export interface Bullet {
+  id: number;
+  ownerSessionId: Uint8Array; // 16バイト
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
+export interface GameState {
+  actors: Actor[];
+  bullets: Bullet[];
+}
+
 // Header を DataView に書き込む (25 bytes)
 export function encodeHeader(view: DataView, offset: number, header: Header): void {
   view.setUint8(offset, header.version);
@@ -96,19 +110,22 @@ export function encodeInputMessage(sessionId: Uint8Array, seq: number, keyMask: 
   return buf;
 }
 
-// Actor Broadcast をデコード
-// 各Actor: SessionID([16]byte) + X(f32) + Y(f32) + HP(u8) + State(u8) = 26 bytes
-export function decodeActorBroadcast(data: ArrayBuffer): Actor[] {
+// GameState をデコード
+// フォーマット: [ActorCount(u16)][Actors...][BulletCount(u16)][Bullets...]
+// Actor: SessionID([16]byte) + X(f32) + Y(f32) + HP(u8) + State(u8) = 26 bytes
+// Bullet: BulletID(u16) + OwnerID([16]byte) + X(f32) + Y(f32) + VX(f32) + VY(f32) = 34 bytes
+export function decodeGameState(data: ArrayBuffer): GameState {
   const view = new DataView(data);
   const ACTOR_SIZE = 26; // 16 + 4 + 4 + 1 + 1
+  const BULLET_SIZE = 34; // 2 + 16 + 4 + 4 + 4 + 4
 
   // Header + PayloadHeader をスキップ
-  const offset = HEADER_SIZE + PAYLOAD_HEADER_SIZE;
+  let pos = HEADER_SIZE + PAYLOAD_HEADER_SIZE;
 
-  const actorCount = view.getUint16(offset, true);
+  // アクター部
+  const actorCount = view.getUint16(pos, true);
+  pos += 2;
   const actors: Actor[] = [];
-
-  let pos = offset + 2;
   for (let i = 0; i < actorCount; i++) {
     const sessionId = new Uint8Array(data, pos, SESSION_ID_SIZE);
     const x = view.getFloat32(pos + 16, true);
@@ -119,7 +136,22 @@ export function decodeActorBroadcast(data: ArrayBuffer): Actor[] {
     pos += ACTOR_SIZE;
   }
 
-  return actors;
+  // 弾丸部
+  const bulletCount = view.getUint16(pos, true);
+  pos += 2;
+  const bullets: Bullet[] = [];
+  for (let i = 0; i < bulletCount; i++) {
+    const id = view.getUint16(pos, true);
+    const ownerSessionId = new Uint8Array(data, pos + 2, SESSION_ID_SIZE);
+    const x = view.getFloat32(pos + 18, true);
+    const y = view.getFloat32(pos + 22, true);
+    const vx = view.getFloat32(pos + 26, true);
+    const vy = view.getFloat32(pos + 30, true);
+    bullets.push({ id, ownerSessionId: new Uint8Array(ownerSessionId), x, y, vx, vy });
+    pos += BULLET_SIZE;
+  }
+
+  return { actors, bullets };
 }
 
 // Header をデコード

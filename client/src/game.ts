@@ -1,6 +1,6 @@
 // ゲームループ・状態管理
 
-import type { Actor } from "./protocol";
+import type { Actor, Bullet } from "./protocol";
 import {
   CONTROL_SUBTYPE_ASSIGN,
   CONTROL_SUBTYPE_LEAVE,
@@ -10,7 +10,7 @@ import {
   DATA_TYPE_CONTROL,
   HEADER_SIZE,
   PAYLOAD_HEADER_SIZE,
-  decodeActorBroadcast,
+  decodeGameState,
   decodeAssignMessage,
   describeKeyMask,
   encodeControlMessage,
@@ -33,6 +33,8 @@ export class Game {
   private renderer: Renderer;
 
   private actors: Actor[] = [];
+  private bullets: Bullet[] = [];
+  private lastBulletUpdate: number = 0;
   private mySessionId: Uint8Array | null = null;
   private seq: number = 0;
   private connected: boolean = false;
@@ -62,6 +64,7 @@ export class Game {
   private onDisconnect(): void {
     this.connected = false;
     this.actors = [];
+    this.bullets = [];
     this.mySessionId = null;
     eventLogger.log("connection", "warn", "Disconnected from server");
   }
@@ -91,7 +94,10 @@ export class Game {
       }
     } else if (dataType === DATA_TYPE_ACTOR) {
       try {
-        this.actors = decodeActorBroadcast(data);
+        const state = decodeGameState(data);
+        this.actors = state.actors;
+        this.bullets = state.bullets;
+        this.lastBulletUpdate = performance.now();
         eventLogger.logActor(this.actors.length, {
           actors: this.actors.map((a) => ({
             sessionId: sessionIdToString(a.sessionId),
@@ -100,7 +106,7 @@ export class Game {
           })),
         });
       } catch (e) {
-        eventLogger.log("error", "error", "Failed to decode actor broadcast", {
+        eventLogger.log("error", "error", "Failed to decode game state", {
           error: String(e),
           byteLength: data.byteLength,
         });
@@ -128,8 +134,17 @@ export class Game {
       this.prevKeyMask = keyMask;
     }
 
+    // 弾丸位置の補間（サーバーtick間を速度で補間）
+    const now = performance.now();
+    const dtSec = (now - this.lastBulletUpdate) / 1000;
+    const interpolatedBullets = this.bullets.map((b) => ({
+      ...b,
+      x: b.x + b.vx * dtSec * 60, // vxはunit/tick、60FPS想定
+      y: b.y + b.vy * dtSec * 60,
+    }));
+
     // 描画
-    this.renderer.render(this.actors, this.mySessionId);
+    this.renderer.render(this.actors, interpolatedBullets, this.mySessionId);
 
     requestAnimationFrame(this.gameLoop.bind(this));
   }
