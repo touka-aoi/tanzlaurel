@@ -215,11 +215,11 @@ func encodeActorBroadcastMessage(payload []byte) []byte {
 	return data
 }
 
-// encodeActorPositions は全アクターの位置をバイナリにエンコードします。
+// encodeActorPositions は全アクターの位置・HP・状態をバイナリにエンコードします。
 // フォーマット: [ActorCount(u16)] + [Actor1] + [Actor2] + ...
-// Actor: [SessionID([16]byte)] + [X(f32)] + [Y(f32)] = 24 bytes/actor
+// Actor: [SessionID([16]byte)] + [X(f32)] + [Y(f32)] + [HP(u8)] + [State(u8)] = 26 bytes/actor
 func encodeActorPositions(actors []*Actor) []byte {
-	const actorSize = 24 // [16]byte + f32 + f32
+	const actorSize = 26 // [16]byte + f32 + f32 + u8 + u8
 	buf := make([]byte, 2+len(actors)*actorSize)
 
 	// ActorCount (u16)
@@ -232,6 +232,8 @@ func encodeActorPositions(actors []*Actor) []byte {
 		copy(buf[offset:offset+16], bytes[:])
 		byteOrder.PutUint32(buf[offset+16:offset+20], math.Float32bits(actor.Position.X))
 		byteOrder.PutUint32(buf[offset+20:offset+24], math.Float32bits(actor.Position.Y))
+		buf[offset+24] = actor.HP
+		buf[offset+25] = uint8(actor.State)
 		offset += actorSize
 	}
 

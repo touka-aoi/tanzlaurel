@@ -18,6 +18,22 @@ export const CONTROL_SUBTYPE_PING = 4;
 export const CONTROL_SUBTYPE_PONG = 5;
 export const CONTROL_SUBTYPE_ASSIGN = 7;
 
+// ActorState - 状態フラグ (bit 0-3)
+export const STATE_ALIVE = 0x01;
+export const STATE_RESPAWNING = 0x02;
+
+// ActorState - 種別フラグ (bit 4-7)
+export const KIND_PLAYER = 0x00;
+export const KIND_BOT = 0x10;
+
+export function isAlive(state: number): boolean {
+  return (state & STATE_ALIVE) !== 0;
+}
+
+export function isBot(state: number): boolean {
+  return (state & KIND_BOT) !== 0;
+}
+
 // KeyMask
 export const KEY_W = 0x01;
 export const KEY_A = 0x02;
@@ -36,6 +52,8 @@ export interface Actor {
   sessionId: Uint8Array; // 16バイト
   x: number;
   y: number;
+  hp: number;
+  state: number;
 }
 
 // Header を DataView に書き込む (25 bytes)
@@ -79,10 +97,10 @@ export function encodeInputMessage(sessionId: Uint8Array, seq: number, keyMask: 
 }
 
 // Actor Broadcast をデコード
-// 各Actor: SessionID([16]byte) + X(f32) + Y(f32) = 24 bytes
+// 各Actor: SessionID([16]byte) + X(f32) + Y(f32) + HP(u8) + State(u8) = 26 bytes
 export function decodeActorBroadcast(data: ArrayBuffer): Actor[] {
   const view = new DataView(data);
-  const ACTOR_SIZE = 24; // 16 + 4 + 4
+  const ACTOR_SIZE = 26; // 16 + 4 + 4 + 1 + 1
 
   // Header + PayloadHeader をスキップ
   const offset = HEADER_SIZE + PAYLOAD_HEADER_SIZE;
@@ -95,7 +113,9 @@ export function decodeActorBroadcast(data: ArrayBuffer): Actor[] {
     const sessionId = new Uint8Array(data, pos, SESSION_ID_SIZE);
     const x = view.getFloat32(pos + 16, true);
     const y = view.getFloat32(pos + 20, true);
-    actors.push({ sessionId: new Uint8Array(sessionId), x, y });
+    const hp = view.getUint8(pos + 24);
+    const state = view.getUint8(pos + 25);
+    actors.push({ sessionId: new Uint8Array(sessionId), x, y, hp, state });
     pos += ACTOR_SIZE;
   }
 

@@ -1,7 +1,7 @@
 // Canvas 描画
 
 import type { Actor } from "./protocol";
-import { sessionIdEquals } from "./protocol";
+import { sessionIdEquals, isAlive, isBot } from "./protocol";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
@@ -55,23 +55,64 @@ export class Renderer {
   drawActors(actors: Actor[], mySessionId: Uint8Array | null): void {
     for (const actor of actors) {
       const isMe = sessionIdEquals(mySessionId, actor.sessionId);
-      this.drawActor(actor.x, actor.y, isMe);
+      this.drawActor(actor, isMe);
     }
   }
 
-  private drawActor(x: number, y: number, isMe: boolean): void {
-    const screenX = x * SCALE;
-    const screenY = y * SCALE;
+  private drawActor(actor: Actor, isMe: boolean): void {
+    const screenX = actor.x * SCALE;
+    const screenY = actor.y * SCALE;
+    const alive = isAlive(actor.state);
+    const bot = isBot(actor.state);
 
+    // 死亡時は半透明
+    const prevAlpha = this.ctx.globalAlpha;
+    if (!alive) {
+      this.ctx.globalAlpha = 0.3;
+    }
+
+    // 色: 自分=緑, Bot=赤, 他人=青
+    let fillColor: string;
+    let strokeColor: string;
+    if (isMe) {
+      fillColor = "#4ade80";
+      strokeColor = "#16a34a";
+    } else if (bot) {
+      fillColor = "#f87171";
+      strokeColor = "#dc2626";
+    } else {
+      fillColor = "#60a5fa";
+      strokeColor = "#2563eb";
+    }
+
+    // アクター円
     this.ctx.beginPath();
     this.ctx.arc(screenX, screenY, ACTOR_RADIUS, 0, Math.PI * 2);
-    this.ctx.fillStyle = isMe ? "#16a34a" : "#2563eb"; // 緑 vs 青
+    this.ctx.fillStyle = fillColor;
     this.ctx.fill();
-
-    // 枠線
-    this.ctx.strokeStyle = isMe ? "#15803d" : "#1d4ed8";
+    this.ctx.strokeStyle = strokeColor;
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
+
+    // HPバー
+    if (alive) {
+      const barWidth = ACTOR_RADIUS * 2.5;
+      const barHeight = 3;
+      const barX = screenX - barWidth / 2;
+      const barY = screenY - ACTOR_RADIUS - 8;
+      const hpRatio = actor.hp / 100;
+
+      // 背景(灰)
+      this.ctx.fillStyle = "#374151";
+      this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+      // HP(緑→赤)
+      const hpColor = hpRatio > 0.5 ? "#4ade80" : hpRatio > 0.25 ? "#facc15" : "#f87171";
+      this.ctx.fillStyle = hpColor;
+      this.ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+    }
+
+    this.ctx.globalAlpha = prevAlpha;
   }
 
   render(actors: Actor[], mySessionId: Uint8Array | null): void {

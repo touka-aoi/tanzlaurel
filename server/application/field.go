@@ -13,10 +13,25 @@ type Field struct {
 	Actors map[domain.SessionID]*Actor
 }
 
+// ActorState はアクターの状態と種別をビットマスクで表現します。
+// bit 0-3: 状態フラグ, bit 4-7: 種別フラグ
+type ActorState uint8
+
+const (
+	StateAlive      ActorState = 0x01
+	StateRespawning ActorState = 0x02
+	KindPlayer      ActorState = 0x00
+	KindBot         ActorState = 0x10
+)
+
 // Actor はフィールド上のプレイヤーを表す構造体です。
 type Actor struct {
-	SessionID domain.SessionID
-	Position  domain.Position2D
+	SessionID     domain.SessionID
+	Position      domain.Position2D
+	HP            uint8
+	State         ActorState
+	ShootCooldown int
+	RespawnTimer  int
 }
 
 // NewField は指定されたマップでフィールドを作成します。
@@ -35,6 +50,8 @@ func (f *Field) SpawnAtCenter(sessionID domain.SessionID) *Actor {
 			X: f.Map.WorldWidth() / 2,
 			Y: f.Map.WorldHeight() / 2,
 		},
+		HP:    100,
+		State: StateAlive,
 	}
 	f.Actors[sessionID] = actor
 	return actor
@@ -70,6 +87,45 @@ func (f *Field) GetAllActors() []*Actor {
 func (f *Field) GetActor(sessionID domain.SessionID) (*Actor, bool) {
 	actor, ok := f.Actors[sessionID]
 	return actor, ok
+}
+
+const RespawnTicks = 180 // 3秒 @60FPS
+
+// IsAlive はアクターが生存しているかを返します。
+func (a *Actor) IsAlive() bool {
+	return a.State&StateAlive != 0
+}
+
+// DamageActor はアクターにダメージを与えます。HPが0になったらRespawning状態に遷移します。
+func (f *Field) DamageActor(sessionID domain.SessionID, damage uint8) {
+	actor, ok := f.Actors[sessionID]
+	if !ok || !actor.IsAlive() {
+		return
+	}
+
+	if damage >= actor.HP {
+		actor.HP = 0
+		actor.State = (actor.State &^ 0x0F) | StateRespawning // 状態フラグのみ変更、種別フラグは維持
+		actor.RespawnTimer = RespawnTicks
+	} else {
+		actor.HP -= damage
+	}
+}
+
+// TickRespawns はリスポーンタイマーを進め、復活処理を行います。
+func (f *Field) TickRespawns() {
+	for _, actor := range f.Actors {
+		if actor.State&StateRespawning == 0 {
+			continue
+		}
+		actor.RespawnTimer--
+		if actor.RespawnTimer <= 0 {
+			actor.HP = 100
+			actor.State = (actor.State &^ 0x0F) | StateAlive
+			actor.Position.X = f.Map.WorldWidth() / 2
+			actor.Position.Y = f.Map.WorldHeight() / 2
+		}
+	}
 }
 
 func clamp(v, min, max float32) float32 {
