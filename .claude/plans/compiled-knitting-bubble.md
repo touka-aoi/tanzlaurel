@@ -31,7 +31,9 @@
 
 1. **`server/application/field.go` - Actor拡張**
    - Actor に `HP uint8`, `State ActorState`, `shootCooldown int`, `respawnTimer int` 追加
-   - `ActorState` bitmask: `ActorAlive=0x01`, `ActorBot=0x02`
+   - `ActorState` bitmask (1バイト内でビット領域を分離):
+     - bit 0-3: 状態フラグ — `StateAlive=0x01`, `StateRespawning=0x02`
+     - bit 4-7: 種別フラグ — `KindPlayer=0x00`, `KindBot=0x10`
    - `SpawnAtCenter` で HP=100, State=ActorAlive に初期化
    - `DamageActor(sessionID, damage)`, `TickRespawns()`, `IsAlive()` メソッド追加
 
@@ -43,7 +45,9 @@
 
 3. **`client/src/protocol.ts` - Actor型・デコード更新**
    - `Actor` interface に `hp: number`, `state: number` 追加
-   - `ACTOR_STATE_ALIVE=0x01`, `ACTOR_STATE_BOT=0x02` 定数
+   - 状態フラグ定数: `STATE_ALIVE=0x01`, `STATE_RESPAWNING=0x02`
+   - 種別フラグ定数: `KIND_PLAYER=0x00`, `KIND_BOT=0x10`
+   - ヘルパー: `isAlive(state)`, `isBot(state)` でビットマスク判定
    - `decodeActorBroadcast`: ACTOR_SIZE を 24→26、HP/State デコード追加
 
 4. **`client/src/renderer.ts` - HPバー・死亡表示**
@@ -70,8 +74,8 @@
 7. **`server/application/withered_application.go` - Tick拡張**
    - `processAutoShoot()`: 全生存アクターが最寄り敵に自動発射
    - Tick順序:
+   - 0. リスポーン処理 (復活後一定時間無敵)
      1. 人間入力適用 (移動)
-     2. リスポーンtick
      3. 自動射撃
      4. 弾丸移動
      5. 衝突判定 → ダメージ適用
@@ -83,7 +87,7 @@
 **クライアント側**
 
 8. **`client/src/protocol.ts` - Bullet型・デコード追加**
-   - `Bullet` interface: `id, x, y, vx, vy`
+   - `Bullet` interface: `id, ownerSessionId, x, y, vx, vy`
    - `decodeActorBroadcast` → `decodeGameState` に改名
    - アクター後にBulletCountとBulletデータをデコード
 
@@ -127,9 +131,9 @@
 SessionID [16]byte | X f32 | Y f32 | HP u8 | State u8
 ```
 
-### 弾丸 (20 bytes/bullet)
+### 弾丸 (36 bytes/bullet)
 ```
-BulletID u32 | X f32 | Y f32 | VX f32 | VY f32
+BulletID u16 | OwnerID [16]byte | X f32 | Y f32 | VX f32 | VY f32
 ```
 
 ### ブロードキャスト全体
