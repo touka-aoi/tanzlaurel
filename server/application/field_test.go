@@ -19,18 +19,27 @@ func TestNewField(t *testing.T) {
 	}
 }
 
-func TestField_SpawnAtCenter(t *testing.T) {
+func TestField_Spawn(t *testing.T) {
 	m := NewMap(10, 10, 1.0) // WorldWidth=10, WorldHeight=10
 	f := NewField(m)
 
 	sessionID := domain.NewSessionID()
-	actor := f.SpawnAtCenter(sessionID)
+	actor := f.Spawn(sessionID)
 
 	if actor.SessionID != sessionID {
 		t.Errorf("SessionID = %s, want %s", actor.SessionID, sessionID)
 	}
-	if actor.Position.X != 5.0 || actor.Position.Y != 5.0 {
-		t.Errorf("Position = (%f, %f), want (5, 5)", actor.Position.X, actor.Position.Y)
+	if actor.Position.X < 0 || actor.Position.X > 10.0 {
+		t.Errorf("Position.X = %f, want within [0, 10]", actor.Position.X)
+	}
+	if actor.Position.Y < 0 || actor.Position.Y > 10.0 {
+		t.Errorf("Position.Y = %f, want within [0, 10]", actor.Position.Y)
+	}
+	if actor.HP != 100 {
+		t.Errorf("HP = %d, want 100", actor.HP)
+	}
+	if !actor.IsAlive() {
+		t.Error("actor should be alive")
 	}
 	if len(f.Actors) != 1 {
 		t.Errorf("Actors length = %d, want 1", len(f.Actors))
@@ -38,12 +47,14 @@ func TestField_SpawnAtCenter(t *testing.T) {
 }
 
 func TestField_Move(t *testing.T) {
-	m := NewMap(10, 10, 1.0) // WorldWidth=10, WorldHeight=10
+	m := NewMap(100, 100, 1.0)
 	f := NewField(m)
 	ctx := context.Background()
 
 	sessionID := domain.NewSessionID()
-	f.SpawnAtCenter(sessionID) // (5, 5)
+	spawned := f.Spawn(sessionID)
+	startX := spawned.Position.X
+	startY := spawned.Position.Y
 
 	f.ActorMove(ctx, sessionID, 2.0, -1.0)
 
@@ -51,8 +62,8 @@ func TestField_Move(t *testing.T) {
 	if !ok {
 		t.Fatal("actor not found")
 	}
-	if actor.Position.X != 7.0 || actor.Position.Y != 4.0 {
-		t.Errorf("Position = (%f, %f), want (7, 4)", actor.Position.X, actor.Position.Y)
+	if actor.Position.X != startX+2.0 || actor.Position.Y != startY-1.0 {
+		t.Errorf("Position = (%f, %f), want (%f, %f)", actor.Position.X, actor.Position.Y, startX+2.0, startY-1.0)
 	}
 }
 
@@ -62,29 +73,34 @@ func TestField_Move_Clamp(t *testing.T) {
 	ctx := context.Background()
 
 	sessionID := domain.NewSessionID()
-	f.SpawnAtCenter(sessionID) // (5, 5)
+	f.Spawn(sessionID)
 
-	tests := []struct {
-		name      string
-		dx, dy    float32
-		expectedX float32
-		expectedY float32
-	}{
-		{"clamp max x", 100, 0, 10.0, 5.0},
-		{"clamp min x", -100, 0, 0.0, 5.0},
-		{"clamp max y", 0, 100, 0.0, 10.0},
-		{"clamp min y", 0, -100, 0.0, 0.0},
+	// 大きく右に移動 → X=10にクランプ
+	f.ActorMove(ctx, sessionID, 1000, 0)
+	actor, _ := f.GetActor(sessionID)
+	if actor.Position.X != 10.0 {
+		t.Errorf("clamp max x: Position.X = %f, want 10.0", actor.Position.X)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f.ActorMove(ctx, sessionID, tt.dx, tt.dy)
-			actor, _ := f.GetActor(sessionID)
-			if actor.Position.X != tt.expectedX || actor.Position.Y != tt.expectedY {
-				t.Errorf("Position = (%f, %f), want (%f, %f)",
-					actor.Position.X, actor.Position.Y, tt.expectedX, tt.expectedY)
-			}
-		})
+	// 大きく左に移動 → X=0にクランプ
+	f.ActorMove(ctx, sessionID, -1000, 0)
+	actor, _ = f.GetActor(sessionID)
+	if actor.Position.X != 0.0 {
+		t.Errorf("clamp min x: Position.X = %f, want 0.0", actor.Position.X)
+	}
+
+	// 大きく下に移動 → Y=10にクランプ
+	f.ActorMove(ctx, sessionID, 0, 1000)
+	actor, _ = f.GetActor(sessionID)
+	if actor.Position.Y != 10.0 {
+		t.Errorf("clamp max y: Position.Y = %f, want 10.0", actor.Position.Y)
+	}
+
+	// 大きく上に移動 → Y=0にクランプ
+	f.ActorMove(ctx, sessionID, 0, -1000)
+	actor, _ = f.GetActor(sessionID)
+	if actor.Position.Y != 0.0 {
+		t.Errorf("clamp min y: Position.Y = %f, want 0.0", actor.Position.Y)
 	}
 }
 
@@ -104,8 +120,8 @@ func TestField_Remove(t *testing.T) {
 
 	sessionID1 := domain.NewSessionID()
 	sessionID2 := domain.NewSessionID()
-	f.SpawnAtCenter(sessionID1)
-	f.SpawnAtCenter(sessionID2)
+	f.Spawn(sessionID1)
+	f.Spawn(sessionID2)
 
 	if len(f.Actors) != 2 {
 		t.Fatalf("Actors length = %d, want 2", len(f.Actors))
@@ -128,9 +144,9 @@ func TestField_GetAllActors(t *testing.T) {
 	m := NewMap(10, 10, 1.0)
 	f := NewField(m)
 
-	f.SpawnAtCenter(domain.NewSessionID())
-	f.SpawnAtCenter(domain.NewSessionID())
-	f.SpawnAtCenter(domain.NewSessionID())
+	f.Spawn(domain.NewSessionID())
+	f.Spawn(domain.NewSessionID())
+	f.Spawn(domain.NewSessionID())
 
 	actors := f.GetAllActors()
 	if len(actors) != 3 {

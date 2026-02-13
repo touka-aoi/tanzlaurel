@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"log/slog"
+	"math/rand/v2"
 
 	"withered/server/domain"
 )
@@ -44,19 +45,27 @@ func NewField(m *Map) *Field {
 	}
 }
 
-// SpawnAtCenter はマップ中央にアクターを生成します。
-func (f *Field) SpawnAtCenter(sessionID domain.SessionID) *Actor {
+const spawnMargin float32 = 5.0 // 端から5ユニットの余白
+
+// Spawn はマップ内のランダム位置にアクターを生成します。
+func (f *Field) Spawn(sessionID domain.SessionID) *Actor {
 	actor := &Actor{
 		SessionID: sessionID,
-		Position: domain.Position2D{
-			X: f.Map.WorldWidth() / 2,
-			Y: f.Map.WorldHeight() / 2,
-		},
-		HP:    100,
-		State: StateAlive,
+		Position:  f.randomPosition(),
+		HP:        100,
+		State:     StateAlive,
 	}
 	f.Actors[sessionID] = actor
 	return actor
+}
+
+func (f *Field) randomPosition() domain.Position2D {
+	w := f.Map.WorldWidth() - spawnMargin*2
+	h := f.Map.WorldHeight() - spawnMargin*2
+	return domain.Position2D{
+		X: spawnMargin + rand.Float32()*w,
+		Y: spawnMargin + rand.Float32()*h,
+	}
 }
 
 // ActorMove はアクターを移動させます。境界を超えないようにクランプします。
@@ -124,8 +133,8 @@ func (f *Field) TickRespawns() {
 		if actor.RespawnTimer <= 0 {
 			actor.HP = 100
 			actor.State = (actor.State &^ 0x0F) | StateAlive
-			actor.Position.X = f.Map.WorldWidth() / 2
-			actor.Position.Y = f.Map.WorldHeight() / 2
+			pos := f.randomPosition()
+			actor.Position = pos
 		}
 	}
 }

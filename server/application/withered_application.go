@@ -151,7 +151,7 @@ func (app *WitheredApplication) handleActor2D(ctx context.Context, sessionID dom
 func (app *WitheredApplication) handleControl(ctx context.Context, sessionID domain.SessionID, header *domain.Header, subType uint8, data []byte) error {
 	switch domain.ControlSubType(subType) {
 	case domain.ControlSubTypeJoin:
-		actor := app.field.SpawnAtCenter(sessionID)
+		actor := app.field.Spawn(sessionID)
 		slog.DebugContext(ctx, "handleControl:join",
 			"sessionID", sessionID,
 			"position", actor.Position,
