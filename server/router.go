@@ -10,5 +10,6 @@ import (
 func Route(pubsub domain.PubSub, roomManager domain.RoomManager) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", handler.NewAcceptHandler(pubsub, roomManager))
+	mux.Handle("/health", handler.NewHealthHandler())
 	return mux
 }
