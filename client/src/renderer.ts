@@ -115,14 +115,15 @@ export class Renderer {
     this.ctx.globalAlpha = prevAlpha;
   }
 
-  drawBullets(bullets: Bullet[]): void {
-    const BULLET_RADIUS = 3;
+  drawBullets(bullets: Bullet[], mySessionId: Uint8Array | null): void {
+    const BULLET_RADIUS = 5;
     for (const bullet of bullets) {
       const screenX = bullet.x * SCALE;
       const screenY = bullet.y * SCALE;
+      const isMine = sessionIdEquals(mySessionId, bullet.ownerSessionId);
       this.ctx.beginPath();
       this.ctx.arc(screenX, screenY, BULLET_RADIUS, 0, Math.PI * 2);
-      this.ctx.fillStyle = "#facc15";
+      this.ctx.fillStyle = isMine ? "#facc15" : "#ef4444"; // 自分=黄, 敵=赤
       this.ctx.fill();
     }
   }
@@ -130,7 +131,7 @@ export class Renderer {
   render(actors: Actor[], bullets: Bullet[], mySessionId: Uint8Array | null): void {
     this.clear();
     this.drawMap();
-    this.drawBullets(bullets);
+    this.drawBullets(bullets, mySessionId);
     this.drawActors(actors, mySessionId);
   }
 }

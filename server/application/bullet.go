@@ -3,7 +3,7 @@ package application
 import "withered/server/domain"
 
 const (
-	BulletSpeed   float32 = 3.0
+	BulletSpeed   float32 = 1.5
 	BulletTTL             = 120 // 2秒 @60FPS
 	BulletRadius  float32 = 0.3
 	ActorRadius   float32 = 0.5
