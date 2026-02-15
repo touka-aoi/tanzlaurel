@@ -151,7 +151,7 @@ func (app *WitheredApplication) handleActor2D(ctx context.Context, sessionID dom
 func (app *WitheredApplication) handleControl(ctx context.Context, sessionID domain.SessionID, header *domain.Header, subType uint8, data []byte) error {
 	switch domain.ControlSubType(subType) {
 	case domain.ControlSubTypeJoin:
-		actor := app.field.SpawnAtCenter(sessionID)
+		actor := app.field.Spawn(sessionID)
 		slog.DebugContext(ctx, "handleControl:join",
 			"sessionID", sessionID,
 			"position", actor.Position,
@@ -175,7 +175,10 @@ func (app *WitheredApplication) handleControl(ctx context.Context, sessionID dom
 }
 
 func (app *WitheredApplication) Tick(ctx context.Context) interface{} {
-	// pendingInputsを走査して移動処理を適用
+	// 0. リスポーン処理
+	app.field.TickRespawns()
+
+	// 1. 人間入力適用 (移動)
 	for _, event := range app.pendingInputs {
 		dx, dy := keyMaskToDirection(event.Input.KeyMask)
 		if dx != 0 || dy != 0 {
@@ -184,13 +187,28 @@ func (app *WitheredApplication) Tick(ctx context.Context) interface{} {
 	}
 	app.pendingInputs = app.pendingInputs[:0]
 
-	// 全アクターの位置をエンコードして返す
+	// 2. 自動射撃
+	app.processAutoShoot()
+
+	// 3. 弾丸移動
+	app.field.TickBullets()
+
+	// 4. 衝突判定 → ダメージ適用
+	hits := app.field.CheckBulletCollisions()
+	for _, hit := range hits {
+		app.field.DamageActor(hit.VictimID, BulletDamage)
+	}
+
+	// 5. 期限切れ弾丸除去
+	app.field.RemoveExpiredBullets()
+
+	// 6. エンコード → ブロードキャスト
 	actors := app.field.GetAllActors()
-	if len(actors) == 0 {
+	if len(actors) == 0 && len(app.field.Bullets) == 0 {
 		return nil
 	}
 
-	payload := encodeActorPositions(actors)
+	payload := encodeGameState(actors, app.field.Bullets)
 	return encodeActorBroadcastMessage(payload)
 }
 
@@ -215,11 +233,97 @@ func encodeActorBroadcastMessage(payload []byte) []byte {
 	return data
 }
 
-// encodeActorPositions は全アクターの位置をバイナリにエンコードします。
+// processAutoShoot は全生存アクターが最寄り敵に向けて自動射撃を行います。
+func (app *WitheredApplication) processAutoShoot() {
+	actors := app.field.GetAllActors()
+	for _, actor := range actors {
+		if !actor.IsAlive() {
+			continue
+		}
+		actor.ShootCooldown--
+		if actor.ShootCooldown > 0 {
+			continue
+		}
+
+		// 最寄りの生存敵を探す
+		var nearest *Actor
+		var nearestDistSq float32 = math.MaxFloat32
+		for _, other := range actors {
+			if other.SessionID == actor.SessionID || !other.IsAlive() {
+				continue
+			}
+			dx := other.Position.X - actor.Position.X
+			dy := other.Position.Y - actor.Position.Y
+			distSq := dx*dx + dy*dy
+			if distSq < nearestDistSq {
+				nearestDistSq = distSq
+				nearest = other
+			}
+		}
+		if nearest == nil {
+			continue
+		}
+
+		// 方向ベクトルを正規化して弾速を掛ける
+		dx := nearest.Position.X - actor.Position.X
+		dy := nearest.Position.Y - actor.Position.Y
+		dist := float32(math.Sqrt(float64(dx*dx + dy*dy)))
+		if dist < 0.001 {
+			continue
+		}
+		vx := dx / dist * BulletSpeed
+		vy := dy / dist * BulletSpeed
+
+		app.field.AddBullet(actor.SessionID, actor.Position, domain.Position2D{X: vx, Y: vy})
+		actor.ShootCooldown = ShootCooldown
+	}
+}
+
+// encodeGameState はアクターと弾丸を統合エンコードします。
+// フォーマット: [ActorCount(u16)][Actors...][BulletCount(u16)][Bullets...]
+func encodeGameState(actors []*Actor, bullets []*Bullet) []byte {
+	const actorSize = 26  // [16]byte + f32 + f32 + u8 + u8
+	const bulletSize = 34 // u16 + [16]byte + f32 + f32 + f32 + f32
+
+	actorPayload := 2 + len(actors)*actorSize
+	bulletPayload := 2 + len(bullets)*bulletSize
+	buf := make([]byte, actorPayload+bulletPayload)
+
+	// アクター部
+	byteOrder.PutUint16(buf[0:2], uint16(len(actors)))
+	offset := 2
+	for _, actor := range actors {
+		bytes := actor.SessionID.Bytes()
+		copy(buf[offset:offset+16], bytes[:])
+		byteOrder.PutUint32(buf[offset+16:offset+20], math.Float32bits(actor.Position.X))
+		byteOrder.PutUint32(buf[offset+20:offset+24], math.Float32bits(actor.Position.Y))
+		buf[offset+24] = actor.HP
+		buf[offset+25] = uint8(actor.State)
+		offset += actorSize
+	}
+
+	// 弾丸部
+	byteOrder.PutUint16(buf[offset:offset+2], uint16(len(bullets)))
+	offset += 2
+	for _, b := range bullets {
+		byteOrder.PutUint16(buf[offset:offset+2], b.ID)
+		ownerBytes := b.OwnerID.Bytes()
+		copy(buf[offset+2:offset+18], ownerBytes[:])
+		byteOrder.PutUint32(buf[offset+18:offset+22], math.Float32bits(b.Position.X))
+		byteOrder.PutUint32(buf[offset+22:offset+26], math.Float32bits(b.Position.Y))
+		byteOrder.PutUint32(buf[offset+26:offset+30], math.Float32bits(b.Velocity.X))
+		byteOrder.PutUint32(buf[offset+30:offset+34], math.Float32bits(b.Velocity.Y))
+		offset += bulletSize
+	}
+
+	return buf
+}
+
+// encodeActorPositions は全アクターの位置・HP・状態をバイナリにエンコードします。
 // フォーマット: [ActorCount(u16)] + [Actor1] + [Actor2] + ...
-// Actor: [SessionID([16]byte)] + [X(f32)] + [Y(f32)] = 24 bytes/actor
+// Actor: [SessionID([16]byte)] + [X(f32)] + [Y(f32)] + [HP(u8)] + [State(u8)] = 26 bytes/actor
 func encodeActorPositions(actors []*Actor) []byte {
-	const actorSize = 24 // [16]byte + f32 + f32
+	const actorSize = 26 // [16]byte + f32 + f32 + u8 + u8
 	buf := make([]byte, 2+len(actors)*actorSize)
 
 	// ActorCount (u16)
@@ -232,6 +336,8 @@ func encodeActorPositions(actors []*Actor) []byte {
 		copy(buf[offset:offset+16], bytes[:])
 		byteOrder.PutUint32(buf[offset+16:offset+20], math.Float32bits(actor.Position.X))
 		byteOrder.PutUint32(buf[offset+20:offset+24], math.Float32bits(actor.Position.Y))
+		buf[offset+24] = actor.HP
+		buf[offset+25] = uint8(actor.State)
 		offset += actorSize
 	}
 

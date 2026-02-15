@@ -1,4 +1,4 @@
-.PHONY: server client install generate-mock test e2e
+.PHONY: server client bot dev install generate-mock test e2e
 
 # サーバー起動
 server:
@@ -7,6 +7,20 @@ server:
 # クライアント起動
 client:
 	cd client && npm run dev
+
+# ボット起動 (BOT_COUNT=5 make bot)
+BOT_COUNT ?= 3
+bot:
+	BOT_COUNT=$(BOT_COUNT) go run server/cmd/bot/main.go
+
+# 全起動 (サーバー + クライアント + ボット)
+dev:
+	@echo "Starting server, client, and bots..."
+	@trap 'kill 0' EXIT; \
+	go run server/cmd/main.go & \
+	sleep 1 && cd client && npm run dev & \
+	sleep 2 && BOT_COUNT=$(BOT_COUNT) go run server/cmd/bot/main.go & \
+	wait
 
 # クライアント依存関係インストール
 install:
