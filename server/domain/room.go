@@ -116,10 +116,10 @@ func (r *Room) Run(ctx context.Context) error {
 				}
 			}
 			// ApplicationのTick()を呼び出し、戻り値があればブロードキャスト
-			if data := r.application.Tick(ctx); data != nil {
-				if bytes, ok := data.([]byte); ok {
-					r.Broadcast(ctx, bytes)
-				}
+			if data, err := r.application.Tick(ctx); err != nil {
+				slog.WarnContext(ctx, "room tick failed", "err", err)
+			} else if data != nil {
+				r.Broadcast(ctx, data)
 			}
 		}
 	}

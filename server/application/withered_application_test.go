@@ -92,6 +92,11 @@ func TestWitheredApplication_HandleMessage_Control(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HandleMessage failed: %v", err)
 	}
+
+	// Join後にエンティティが1つ追加されていることを確認
+	if len(app.world.Entities) != 1 {
+		t.Errorf("expected 1 entity, got %d", len(app.world.Entities))
+	}
 }
 
 func TestWitheredApplication_HandleMessage_InvalidHeader(t *testing.T) {
@@ -112,9 +117,11 @@ func TestWitheredApplication_Tick(t *testing.T) {
 	app := NewWitheredApplication()
 	ctx := context.Background()
 
-	// Tickはnilを返す
-	result := app.Tick(ctx)
-	if result != nil {
-		t.Errorf("expected nil, got %v", result)
+	result, err := app.Tick(ctx)
+	if err != nil {
+		t.Fatalf("Tick failed: %v", err)
+	}
+	if result == nil {
+		t.Error("expected non-nil result from Tick")
 	}
 }
