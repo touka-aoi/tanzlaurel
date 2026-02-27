@@ -5,10 +5,9 @@ import (
 	"encoding/binary"
 	"math"
 	"sort"
-	"withered/server/domain"
-)
 
-var byteOrder = binary.LittleEndian
+	"withered/server/application/protocol"
+)
 
 type Codec[W any] interface {
 	EncodeSnapshot(ctx context.Context, world W) ([]byte, error)
@@ -20,11 +19,11 @@ type WitheredCodec struct{}
 
 func (c WitheredCodec) EncodeSnapshot(ctx context.Context, world *ShootingWorld) ([]byte, error) {
 	body := encodeWitheredSnapshot(world)
-	header := &domain.PayloadHeader{
-		DataType: domain.DataTypeSnapshot,
+	header := &protocol.PayloadHeader{
+		DataType: protocol.DataTypeSnapshot,
 		SubType:  0,
 	}
-	out := make([]byte, 0, domain.PayloadHeaderSize+len(body))
+	out := make([]byte, 0, protocol.PayloadHeaderSize+len(body))
 	out = append(out, header.Encode()...)
 	out = append(out, body...)
 	return out, nil
