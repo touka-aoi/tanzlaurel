@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"withered/server/domain/protocol"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -29,7 +31,7 @@ type SessionEndpoint struct {
 	connection  *Connection
 	pubsub      PubSub
 	roomManager RoomManager
-	roomID      RoomID // 実行時にRoomManagerから取得
+	roomID      string // 現在参加中のRoomID（空文字列=未参加）
 
 	ctrlCh  chan endpointEvent // 制御用チャネル
 	writeCh chan []byte        // 書き込み用チャネル
@@ -90,7 +92,7 @@ func (se *SessionEndpoint) Run() error {
 	})
 
 	// セッションID通知を送信
-	assignMsg := EncodeAssignMessage(se.session.ID())
+	assignMsg := protocol.EncodeAssign(se.session.ID().Bytes())
 	if err := se.Send(assignMsg); err != nil {
 		return err
 	}
@@ -201,14 +203,16 @@ func (se *SessionEndpoint) close() {
 		return
 	}
 	// Roomからの離脱（cancel前に実行）
-	if !se.roomID.IsEmpty() {
-		roomTopic := Topic("room:" + se.roomID.String())
-		leaveMsg := EncodeLeaveMessage(se.session.ID())
+	if se.roomID != "" {
+		roomTopic := Topic("room:" + se.roomID)
+		leavePayload := protocol.EncodeRoomMessage(se.roomID, protocol.RoomMsgTypeLeave, nil)
+		// Room.HandleMessageに渡すのはTransportHeaderを除いたペイロード部分
+		_, _, hdrLen, _ := protocol.ParseTransportHeader(leavePayload)
 		se.pubsub.Publish(se.ctx, roomTopic, Message{
 			SessionID: se.session.ID(),
-			Data:      leaveMsg,
+			Data:      leavePayload[hdrLen:],
 		})
-		se.roomID = RoomID{}
+		se.roomID = ""
 	}
 	se.cancel()
 	se.session.Close()
@@ -216,79 +220,54 @@ func (se *SessionEndpoint) close() {
 }
 
 func (se *SessionEndpoint) handleData(ctx context.Context, data []byte) {
-	header, err := ParseHeader(data)
+	msgType, totalLen, hdrLen, err := protocol.ParseTransportHeader(data)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to parse header", "err", err)
+		slog.WarnContext(ctx, "failed to parse transport header", "err", err)
 		return
 	}
-	expectedBytes := se.session.ID().Bytes()
-	if header.SessionID != expectedBytes {
-		slog.WarnContext(ctx, "session ID mismatch", "expected", se.session.ID(), "got", SessionIDFromBytes(header.SessionID))
+	if hdrLen+int(totalLen) > len(data) {
+		slog.WarnContext(ctx, "message truncated", "sessionID", se.session.ID())
 		return
 	}
-	payloadHeader, err := ParsePayloadHeader(data[HeaderSize:])
-	if err != nil {
-		slog.WarnContext(ctx, "failed to parse payload header", "err", err)
-		return
-	}
+	payload := data[hdrLen : hdrLen+int(totalLen)]
 
-	switch payloadHeader.DataType {
-	case DataTypeControl:
-		se.handleControlMessage(ctx, ControlSubType(payloadHeader.SubType), data)
-		return
-	case DataTypeInput, DataTypeActor2D:
-		// データメッセージをroom topicに転送
-		if se.roomID.IsEmpty() {
-			slog.WarnContext(ctx, "received data message before joining a room", "sessionID", se.session.ID())
-			return
-		}
-		roomTopic := Topic("room:" + se.roomID.String())
-		se.pubsub.Publish(ctx, roomTopic, Message{
-			SessionID: se.session.ID(),
-			Data:      data,
-		})
-	default:
-		slog.WarnContext(ctx, "unknown data type", "dataType", payloadHeader.DataType)
-	}
-}
-
-func (se *SessionEndpoint) handleControlMessage(ctx context.Context, subType ControlSubType, data []byte) {
-	switch subType {
-	case ControlSubTypeJoin:
-		payload, err := ParseJoinPayload(data[HeaderSize+PayloadHeaderSize:])
-		if err != nil {
-			slog.WarnContext(ctx, "failed to parse join message", "err", err)
-			return
-		}
-		roomID := payload.RoomID
-		// RoomIDが空の場合、RoomManagerからデフォルトルームを取得
-		if roomID.IsEmpty() {
-			defaultRoomID, err := se.roomManager.GetRoom(ctx, se.session.ID())
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to get default room", "err", err)
-				return
-			}
-			roomID = defaultRoomID
-			slog.DebugContext(ctx, "auto-assigned room", "sessionID", se.session.ID(), "roomID", roomID)
-		}
-		se.roomID = roomID
-		slog.InfoContext(ctx, "session joined room", "sessionID", se.session.ID(), "roomID", se.roomID)
-		// room topicにJoinメッセージをpublish（Room.HandleMessageでsessions追加）
-		roomTopic := Topic("room:" + se.roomID.String())
-		se.pubsub.Publish(ctx, roomTopic, Message{SessionID: se.session.ID(), Data: data})
-	case ControlSubTypeLeave:
-		if se.roomID.IsEmpty() {
-			slog.WarnContext(ctx, "session not in any room, cannot leave", "sessionID", se.session.ID())
-			return
-		}
-		// room topicにLeaveメッセージをpublish（Room.HandleMessageでsessions削除）
-		roomTopic := Topic("room:" + se.roomID.String())
-		se.pubsub.Publish(ctx, roomTopic, Message{SessionID: se.session.ID(), Data: data})
-		slog.InfoContext(ctx, "session left room", "sessionID", se.session.ID(), "roomID", se.roomID)
-		se.roomID = RoomID{}
-	case ControlSubTypePong:
+	switch msgType {
+	case protocol.MsgTypePong:
 		slog.DebugContext(ctx, "received pong", "sessionID", se.session.ID())
 		se.sendCtrlEvent(ctx, endpointEvent{kind: evPong})
+
+	case protocol.MsgTypeRoomMessage:
+		// RoomIDを解析してroom topicにpublish
+		roomID, n, err := protocol.ParseRoomID(payload)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to parse room ID", "err", err)
+			return
+		}
+
+		// RoomMsgTypeを先読みしてJoin/Leave/AppDataを判定
+		roomMsgType, _, err := protocol.ParseRoomHeader(payload[n:])
+		if err != nil {
+			slog.WarnContext(ctx, "failed to parse room header", "err", err)
+			return
+		}
+
+		switch roomMsgType {
+		case protocol.RoomMsgTypeJoin:
+			se.roomID = roomID
+			slog.InfoContext(ctx, "session joined room", "sessionID", se.session.ID(), "roomID", roomID)
+		case protocol.RoomMsgTypeLeave:
+			slog.InfoContext(ctx, "session left room", "sessionID", se.session.ID(), "roomID", roomID)
+			defer func() { se.roomID = "" }()
+		}
+
+		roomTopic := Topic("room:" + roomID)
+		se.pubsub.Publish(ctx, roomTopic, Message{
+			SessionID: se.session.ID(),
+			Data:      payload, // TransportHeaderを除いたペイロードをRoomに渡す
+		})
+
+	default:
+		slog.WarnContext(ctx, "unknown message type", "msgType", msgType)
 	}
 }
 

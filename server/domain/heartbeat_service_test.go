@@ -25,8 +25,10 @@ func TestHeartbeatService_SendsPingToWriteCh(t *testing.T) {
 		if msg == nil {
 			t.Fatal("received nil message")
 		}
-		if len(msg) != domain.HeaderSize+domain.PayloadHeaderSize {
-			t.Fatalf("unexpected message size: got %d, want %d", len(msg), domain.HeaderSize+domain.PayloadHeaderSize)
+		// 新プロトコル: Ping = [MsgType=0x01: 1byte][TotalLen=0: 1byte] = 2バイト
+		expectedSize := 2
+		if len(msg) != expectedSize {
+			t.Fatalf("unexpected message size: got %d, want %d", len(msg), expectedSize)
 		}
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for ping message")

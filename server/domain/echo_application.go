@@ -19,12 +19,12 @@ func (e *EchoApplication) HandleMessage(ctx context.Context, sessionID SessionID
 	return nil
 }
 
-func (e *EchoApplication) Tick(ctx context.Context) interface{} {
+func (e *EchoApplication) Tick(ctx context.Context) ([]byte, error) {
 	if e.pendingData == nil {
-		return nil
+		return nil, nil
 	}
 	data := e.pendingData
 	e.pendingData = nil
 	slog.DebugContext(ctx, "EchoApplication Tick", "data", string(data))
-	return data
+	return data, nil
 }
