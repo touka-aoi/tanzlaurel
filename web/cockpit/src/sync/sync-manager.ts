@@ -1,9 +1,8 @@
 import { RGA, type Operation, type NodeID, OpType } from "../crdt/rga";
 import { WSClient } from "./ws-client";
 
-let reqCounter = 0;
 function genReqId(): string {
-  return `${Date.now()}-${++reqCounter}-${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }
 
 export interface SyncState {
@@ -21,6 +20,7 @@ export class SyncManager {
   private siteId: string;
   private lastServerSeq = 0;
   private pendingAcks = new Map<string, Operation>();
+  private confirmedReqIds = new Set<string>();
   private listeners: SyncListener[] = [];
   private removeWsHandler: (() => void) | null = null;
 
@@ -181,6 +181,7 @@ export class SyncManager {
         break;
 
       case "ack":
+        this.confirmedReqIds.add(data.request_id);
         this.pendingAcks.delete(data.request_id);
         if (data.server_seq > this.lastServerSeq) {
           this.lastServerSeq = data.server_seq;
@@ -204,7 +205,7 @@ export class SyncManager {
 
     for (const syncOp of data.ops || []) {
       // 自分が送ったopはRGAに既に適用済みなのでスキップ
-      if (this.pendingAcks.has(syncOp.request_id)) {
+      if (this.pendingAcks.has(syncOp.request_id) || this.confirmedReqIds.delete(syncOp.request_id)) {
         continue;
       }
 

@@ -22,6 +22,10 @@ func (w *responseWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+func (w *responseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 // HTTPMiddleware はリクエスト/レスポンスのログを出力するミドルウェア。
 func HTTPMiddleware(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
