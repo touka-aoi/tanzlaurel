@@ -11,12 +11,12 @@ import (
 )
 
 // NewRouter はHTTPルーターを構築する。
-func NewRouter(log *slog.Logger, entryStore domain.EntryStore, syncService *application.SyncService) http.Handler {
+func NewRouter(log *slog.Logger, entryStore domain.EntryStore, syncService *application.SyncService, projector *application.EntryProjector) http.Handler {
 	mux := http.NewServeMux()
 
 	health := handler.NewHealth()
 	entry := handler.NewEntry(entryStore)
-	ws := handler.NewWS(syncService, log)
+	ws := handler.NewWS(syncService, projector, log)
 
 	mux.Handle("GET /api/health", health)
 	mux.HandleFunc("GET /api/entries", entry.List)

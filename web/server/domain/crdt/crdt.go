@@ -1,11 +1,168 @@
 package crdt
 
 import (
+	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
+
+// payloadMsg はIncomingMessageのPayloadから必要フィールドを抽出する構造体。
+type payloadMsg struct {
+	RequestID string      `json:"request_id"`
+	OpType    int         `json:"op_type"`
+	NodeID    *payloadNID `json:"node_id"`
+	After     *payloadNID `json:"after"`
+	Value     string      `json:"value"`
+}
+
+type payloadNID struct {
+	SiteID    string `json:"site_id"`
+	Timestamp uint64 `json:"timestamp"`
+}
+
+// OperationFromPayload はIncomingMessageのJSONバイト列からOperationを生成する。
+func OperationFromPayload(payload []byte) (Operation, error) {
+	var msg payloadMsg
+	if err := json.Unmarshal(payload, &msg); err != nil {
+		return Operation{}, fmt.Errorf("unmarshal payload: %w", err)
+	}
+
+	requestID, err := uuid.Parse(msg.RequestID)
+	if err != nil {
+		return Operation{}, fmt.Errorf("parse request_id: %w", err)
+	}
+
+	if msg.NodeID == nil {
+		return Operation{}, fmt.Errorf("node_id is required")
+	}
+
+	replicaID, err := uuid.Parse(msg.NodeID.SiteID)
+	if err != nil {
+		return Operation{}, fmt.Errorf("parse node_id.site_id: %w", err)
+	}
+
+	op := Operation{
+		RequestID: requestID,
+		OpType:    OpType(msg.OpType),
+		NodeID: NodeID{
+			ReplicaID: replicaID,
+			Timestamp: msg.NodeID.Timestamp,
+		},
+	}
+
+	if msg.After != nil {
+		afterReplicaID, err := uuid.Parse(msg.After.SiteID)
+		if err != nil {
+			return Operation{}, fmt.Errorf("parse after.site_id: %w", err)
+		}
+		after := NodeID{
+			ReplicaID: afterReplicaID,
+			Timestamp: msg.After.Timestamp,
+		}
+		op.After = &after
+	}
+
+	if msg.Value != "" {
+		r, _ := utf8.DecodeRuneInString(msg.Value)
+		op.Value = r
+	}
+
+	return op, nil
+}
+
+// RGASnapshot はRGAの永続化用構造体。
+type RGASnapshot struct {
+	ReplicaID string         `json:"replica_id"`
+	Counter   uint64         `json:"counter"`
+	Nodes     []NodeSnapshot `json:"nodes"`
+	Seen      []string       `json:"seen"`
+	Pending   []Operation    `json:"pending,omitempty"`
+}
+
+// NodeSnapshot はノードの永続化用構造体。
+type NodeSnapshot struct {
+	ID      NodeID  `json:"id"`
+	After   *NodeID `json:"after"`
+	Value   string  `json:"value"`
+	Deleted bool    `json:"deleted"`
+}
+
+// Export はRGAをシリアライズ可能なスナップショットに変換する。
+func (r *RGA) Export() RGASnapshot {
+	nodes := make([]NodeSnapshot, len(r.nodes))
+	for i, n := range r.nodes {
+		nodes[i] = NodeSnapshot{
+			ID:      n.id,
+			After:   n.after,
+			Value:   string(n.value),
+			Deleted: n.deleted,
+		}
+	}
+
+	seen := make([]string, 0, len(r.seen))
+	for id := range r.seen {
+		seen = append(seen, id.String())
+	}
+
+	// pendingをコピー
+	pending := make([]Operation, len(r.pending))
+	copy(pending, r.pending)
+
+	return RGASnapshot{
+		ReplicaID: r.clock.ReplicaID().String(),
+		Counter:   r.clock.counter,
+		Nodes:     nodes,
+		Seen:      seen,
+		Pending:   pending,
+	}
+}
+
+// ImportRGA はスナップショットからRGAを復元する。
+func ImportRGA(snap RGASnapshot) (*RGA, error) {
+	replicaID, err := uuid.Parse(snap.ReplicaID)
+	if err != nil {
+		return nil, fmt.Errorf("parse replica_id: %w", err)
+	}
+
+	rga := &RGA{
+		clock: &LamportClock{
+			replicaID: replicaID,
+			counter:   snap.Counter,
+		},
+		nodes: make([]*node, len(snap.Nodes)),
+		index: make(map[NodeID]int, len(snap.Nodes)),
+		seen:  make(map[uuid.UUID]struct{}, len(snap.Seen)),
+	}
+
+	for i, ns := range snap.Nodes {
+		r, _ := utf8.DecodeRuneInString(ns.Value)
+		rga.nodes[i] = &node{
+			id:      ns.ID,
+			after:   ns.After,
+			value:   r,
+			deleted: ns.Deleted,
+		}
+		rga.index[ns.ID] = i
+	}
+
+	for _, s := range snap.Seen {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("parse seen id: %w", err)
+		}
+		rga.seen[id] = struct{}{}
+	}
+
+	// pending復元
+	rga.pending = make([]Operation, len(snap.Pending))
+	copy(rga.pending, snap.Pending)
+
+	return rga, nil
+}
 
 // NodeID はRGA内のノードを一意に識別する。
 type NodeID struct {

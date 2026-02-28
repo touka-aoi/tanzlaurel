@@ -1,1 +1,5 @@
 /testdata/
+/server/data/
+/server/bin/
+/server/.pid
+/cockpit/.pid

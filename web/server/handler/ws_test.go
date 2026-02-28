@@ -21,7 +21,7 @@ func setupWSServer(t *testing.T) (*httptest.Server, *application.SyncService) {
 	eventStore := memory.NewEventStore()
 	syncService := application.NewSyncService(eventStore)
 	log := slog.Default()
-	wsHandler := handler.NewWS(syncService, log)
+	wsHandler := handler.NewWS(syncService, nil, log)
 	srv := httptest.NewServer(wsHandler)
 	t.Cleanup(srv.Close)
 	return srv, syncService

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
+	"path/filepath"
 
 	"flourish/server"
-	"flourish/server/adapter/memory"
+	"flourish/server/adapter/jsonfile"
 	"flourish/server/application"
 	"flourish/server/logger"
 )
@@ -23,10 +25,35 @@ func main() {
 	log := logger.New(cfg)
 	logger.PrintBanner(cfg, addr, "")
 
-	entryStore := memory.NewEntryStore()
-	eventStore := memory.NewEventStore()
+	dataDir := envOrDefault("DATA_DIR", "data")
+
+	entryStore, err := jsonfile.NewEntryStore(dataDir)
+	if err != nil {
+		log.Error("entry store初期化エラー", "error", err)
+		os.Exit(1)
+	}
+	eventStore, err := jsonfile.NewEventStore(dataDir)
+	if err != nil {
+		log.Error("event store初期化エラー", "error", err)
+		os.Exit(1)
+	}
+	rgaStateStore, err := jsonfile.NewRGAStateStore(dataDir)
+	if err != nil {
+		log.Error("rga state store初期化エラー", "error", err)
+		os.Exit(1)
+	}
+
 	syncService := application.NewSyncService(eventStore)
-	router := server.NewRouter(log, entryStore, syncService)
+	markdownDir := filepath.Join(dataDir, "markdown")
+	projector := application.NewEntryProjector(entryStore, rgaStateStore, markdownDir, log)
+
+	// 起動時にEventStoreからRGA復元
+	if err := projector.Restore(context.Background(), eventStore, eventStore.EntryIDs()); err != nil {
+		log.Error("projector復元エラー", "error", err)
+		os.Exit(1)
+	}
+
+	router := server.NewRouter(log, entryStore, syncService, projector)
 	srv := server.New(addr, router, log)
 
 	if err := srv.Run(); err != nil {
