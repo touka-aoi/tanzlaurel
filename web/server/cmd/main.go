@@ -5,6 +5,7 @@ import (
 
 	"flourish/server"
 	"flourish/server/adapter/memory"
+	"flourish/server/application"
 	"flourish/server/logger"
 )
 
@@ -23,7 +24,9 @@ func main() {
 	logger.PrintBanner(cfg, addr, "")
 
 	entryStore := memory.NewEntryStore()
-	router := server.NewRouter(log, entryStore)
+	eventStore := memory.NewEventStore()
+	syncService := application.NewSyncService(eventStore)
+	router := server.NewRouter(log, entryStore, syncService)
 	srv := server.New(addr, router, log)
 
 	if err := srv.Run(); err != nil {
