@@ -122,6 +122,7 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 		return
 	}
 
+	// ACKを先に送信
 	ackMsg := AckMsg{
 		Type:      MsgTypeAck,
 		RequestID: msg.RequestID,
@@ -132,6 +133,21 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 	sub.mu.Lock()
 	conn.Write(ctx, websocket.MessageText, data)
 	sub.mu.Unlock()
+
+	// 重複でなければbroadcast
+	if ack.ServerSeq > 0 {
+		h.syncService.Broadcast(entryID, application.SyncMessage{
+			EntryID: entryID,
+			Ops: []application.SyncOp{
+				{
+					RequestID: requestID,
+					ServerSeq: ack.ServerSeq,
+					Payload:   payload,
+				},
+			},
+			LatestServerSeq: ack.ServerSeq,
+		})
+	}
 }
 
 func (h *WS) handleSyncRequest(ctx context.Context, conn *websocket.Conn, sub *wsSubscriber, msg IncomingMessage, subscribedEntries *[]uuid.UUID) {

@@ -68,7 +68,13 @@ func TestSyncService_HandleOp_PersistsAndBroadcasts(t *testing.T) {
 		t.Errorf("EventTypeがcrdt_opであるべき: got %q", events[0].EventType)
 	}
 
-	// subscriberにbroadcastされているか確認
+	// broadcastして確認
+	svc.Broadcast(entryID, application.SyncMessage{
+		EntryID:         entryID,
+		Ops:             []application.SyncOp{{RequestID: op.RequestID, ServerSeq: ack.ServerSeq, Payload: payload}},
+		LatestServerSeq: ack.ServerSeq,
+	})
+
 	msgs := sub.Messages()
 	if len(msgs) != 1 {
 		t.Fatalf("broadcastが1件であるべき: got %d", len(msgs))

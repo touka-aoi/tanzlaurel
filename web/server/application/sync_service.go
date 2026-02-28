@@ -69,7 +69,7 @@ func (s *SyncService) Unsubscribe(entryID uuid.UUID, sub Subscriber) {
 	}
 }
 
-// HandleOp はopを受信し、重複検知→永続化→broadcast→ACK返却する。
+// HandleOp はopを受信し、重複検知→永続化→ACK返却する。broadcastは別途Broadcastを呼ぶ。
 func (s *SyncService) HandleOp(ctx context.Context, entryID, siteID, requestID uuid.UUID, payload []byte) (AckMessage, error) {
 	event := domain.Event{
 		EntryID:   entryID,
@@ -84,41 +84,22 @@ func (s *SyncService) HandleOp(ctx context.Context, entryID, siteID, requestID u
 		return AckMessage{}, err
 	}
 
-	// 重複の場合
-	if serverSeq == 0 {
-		return AckMessage{
-			RequestID: requestID,
-			EntryID:   entryID,
-			ServerSeq: 0,
-		}, nil
-	}
-
-	// broadcast
-	syncMsg := SyncMessage{
-		EntryID: entryID,
-		Ops: []SyncOp{
-			{
-				RequestID: requestID,
-				ServerSeq: serverSeq,
-				Payload:   payload,
-			},
-		},
-		LatestServerSeq: serverSeq,
-	}
-
-	s.mu.RLock()
-	subs := s.subscribers[entryID]
-	s.mu.RUnlock()
-
-	for _, sub := range subs {
-		sub.Send(syncMsg)
-	}
-
 	return AckMessage{
 		RequestID: requestID,
 		EntryID:   entryID,
 		ServerSeq: serverSeq,
 	}, nil
+}
+
+// Broadcast はsyncメッセージを全subscriberに配信する。
+func (s *SyncService) Broadcast(entryID uuid.UUID, msg SyncMessage) {
+	s.mu.RLock()
+	subs := s.subscribers[entryID]
+	s.mu.RUnlock()
+
+	for _, sub := range subs {
+		sub.Send(msg)
+	}
 }
 
 // GetDiff は指定されたserver_seq以降の差分を取得する。
