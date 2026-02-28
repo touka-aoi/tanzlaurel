@@ -1,5 +1,30 @@
 # 開発進捗・トラブルシューティング
 
+## 2026-02-28: CRDTブログサービス Phase 1〜4 実装完了
+
+### 実装済み
+
+| Phase | 内容 | コミット数 |
+|-------|------|-----------|
+| Phase 1 | RGA CRDTコアロジック + PBTテスト (Go) | 1 |
+| Phase 2 | domain層、インメモリアダプター、ロガー、REST API、サーバー構築 | 5 |
+| Phase 3 | SyncService、WebSocket、TS RGA、統合テスト | 4 |
+| Phase 4 | Preact + TailwindCSS v4 フロントエンド | 1 |
+
+### テスト状況
+
+- Go PBT (rapid): RGA収束性・親子順序・削除 — 全合格
+- Go ユニット: EventStore/EntryStore/Handler/SyncService/WebSocket — 全合格 (18件)
+- TS vitest: RGA収束性・冪等性・pending — 全合格 (6件)
+
+### 未実装 (Phase N, Phase 5)
+
+- ScyllaDB導入 (現在はインメモリ)
+- オフライン編集対応 (IndexedDB)
+- エディタのテキスト差分→CRDTオペレーション変換
+
+---
+
 ## 2024-02-01: Vite + TypeScript で型インポートエラー
 
 ### エラー内容
