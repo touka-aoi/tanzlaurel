@@ -175,6 +175,21 @@ export class RGA {
     }
   }
 
+  nodeAt(pos: number): NodeID | null {
+    if (pos < 0) return null;
+    let i = 0;
+    for (const n of this.nodes) {
+      if (n.deleted) continue;
+      if (i === pos) return n.id;
+      i++;
+    }
+    return null;
+  }
+
+  visibleNodes(): NodeID[] {
+    return this.nodes.filter((n) => !n.deleted).map((n) => n.id);
+  }
+
   text(): string {
     return this.nodes
       .filter((n) => !n.deleted)

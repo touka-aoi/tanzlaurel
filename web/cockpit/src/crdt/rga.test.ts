@@ -77,6 +77,42 @@ describe("RGA", () => {
     expect(r1.text()).toBe(r2.text());
   });
 
+  it("nodeAt: テキスト位置からNodeIDを取得できる", () => {
+    const rga = new RGA("site-a");
+    const op1 = rga.insert(null, "a");
+    const op2 = rga.insert(op1.nodeId, "b");
+    const op3 = rga.insert(op2.nodeId, "c");
+
+    expect(rga.nodeAt(0)).toEqual(op1.nodeId);
+    expect(rga.nodeAt(1)).toEqual(op2.nodeId);
+    expect(rga.nodeAt(2)).toEqual(op3.nodeId);
+    expect(rga.nodeAt(3)).toBeNull();
+    expect(rga.nodeAt(-1)).toBeNull();
+  });
+
+  it("nodeAt: 削除済みノードをスキップする", () => {
+    const rga = new RGA("site-a");
+    const op1 = rga.insert(null, "a");
+    const op2 = rga.insert(op1.nodeId, "b");
+    const op3 = rga.insert(op2.nodeId, "c");
+    rga.delete(op2.nodeId);
+
+    // text() = "ac", pos0=a, pos1=c
+    expect(rga.nodeAt(0)).toEqual(op1.nodeId);
+    expect(rga.nodeAt(1)).toEqual(op3.nodeId);
+  });
+
+  it("visibleNodes: 可視ノードのIDリストを返す", () => {
+    const rga = new RGA("site-a");
+    const op1 = rga.insert(null, "a");
+    const op2 = rga.insert(op1.nodeId, "b");
+    const op3 = rga.insert(op2.nodeId, "c");
+    rga.delete(op2.nodeId);
+
+    const visible = rga.visibleNodes();
+    expect(visible).toEqual([op1.nodeId, op3.nodeId]);
+  });
+
   it("pendingバッファ: afterノードが未到着のopは後で適用される", () => {
     const src = new RGA("site-a");
     const op1 = src.insert(null, "a");
