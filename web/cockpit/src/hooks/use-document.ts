@@ -27,25 +27,14 @@ export function useDocument(entryId: string | null) {
     };
   }, [entryId]);
 
-  const insertChar = useCallback(
-    (after: { siteId: string; timestamp: number } | null, value: string) => {
-      managerRef.current?.insert(after, value);
-    },
-    [],
-  );
-
-  const deleteChar = useCallback(
-    (nodeId: { siteId: string; timestamp: number }) => {
-      managerRef.current?.delete(nodeId);
-    },
-    [],
-  );
+  const applyTextChange = useCallback((newText: string) => {
+    managerRef.current?.applyTextChange(newText);
+  }, []);
 
   return {
     text: state.text,
     connected: state.connected,
     lastServerSeq: state.lastServerSeq,
-    insertChar,
-    deleteChar,
+    applyTextChange,
   };
 }

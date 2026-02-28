@@ -79,6 +79,72 @@ export class SyncManager {
     this.notify();
   }
 
+  applyTextChange(newText: string): void {
+    const oldText = this.rga.text();
+    if (oldText === newText) return;
+
+    // 共通接頭辞
+    let prefixLen = 0;
+    while (
+      prefixLen < oldText.length &&
+      prefixLen < newText.length &&
+      oldText[prefixLen] === newText[prefixLen]
+    ) {
+      prefixLen++;
+    }
+
+    // 共通接尾辞（接頭辞と重ならないように）
+    let suffixLen = 0;
+    while (
+      suffixLen < oldText.length - prefixLen &&
+      suffixLen < newText.length - prefixLen &&
+      oldText[oldText.length - 1 - suffixLen] ===
+        newText[newText.length - 1 - suffixLen]
+    ) {
+      suffixLen++;
+    }
+
+    const deleteCount = oldText.length - prefixLen - suffixLen;
+    const insertChars = newText.slice(prefixLen, newText.length - suffixLen);
+
+    const visibleNodes = this.rga.visibleNodes();
+
+    // 後ろから削除（インデックスがずれないように）
+    for (let i = deleteCount - 1; i >= 0; i--) {
+      const nodeId = visibleNodes[prefixLen + i];
+      if (nodeId) this.delete(nodeId);
+    }
+
+    // 挿入
+    let after =
+      prefixLen > 0 ? visibleNodes[prefixLen - 1] ?? null : null;
+    for (const ch of insertChars) {
+      const afterCopy = after;
+      const op = this.rga.insert(afterCopy, ch);
+      const reqId = genReqId();
+      this.pendingAcks.set(reqId, op);
+
+      this.ws.send({
+        type: "op",
+        request_id: reqId,
+        entry_id: this.entryId,
+        op_type: OpType.Insert,
+        node_id: {
+          site_id: op.nodeId.siteId,
+          timestamp: op.nodeId.timestamp,
+        },
+        after: op.after
+          ? { site_id: op.after.siteId, timestamp: op.after.timestamp }
+          : null,
+        value: op.value,
+      });
+
+      after = op.nodeId;
+    }
+
+    this.notify();
+  }
+
   getText(): string {
     return this.rga.text();
   }

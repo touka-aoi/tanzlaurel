@@ -8,7 +8,7 @@ import { MarkdownPreview } from "./components/markdown-preview";
 export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { entries, loading, createEntry, deleteEntry } = useEntries();
-  const { text, connected } = useDocument(selectedId);
+  const { text, connected, applyTextChange } = useDocument(selectedId);
 
   const handleCreate = useCallback(async () => {
     const id = await createEntry();
@@ -22,10 +22,6 @@ export function App() {
     },
     [deleteEntry, selectedId],
   );
-
-  const handleInput = useCallback((_newText: string) => {
-    // TODO: diff old text vs new text and generate insert/delete ops
-  }, []);
 
   return (
     <div class="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 text-white">
@@ -58,7 +54,7 @@ export function App() {
               <EntryEditor
                 text={text}
                 connected={connected}
-                onInput={handleInput}
+                onInput={applyTextChange}
               />
             </div>
             {/* Preview */}
