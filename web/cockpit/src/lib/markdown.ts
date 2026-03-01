@@ -4,6 +4,7 @@ const md = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: true,
+  breaks: true,
 });
 
 export function renderMarkdown(text: string): string {

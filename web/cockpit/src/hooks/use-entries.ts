@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "preact/hooks";
+import { useState, useEffect, useCallback, useRef } from "preact/hooks";
 
 export interface EntryListItem {
   id: string;
@@ -13,16 +13,21 @@ export function useEntries() {
   const [entries, setEntries] = useState<EntryListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const initializedRef = useRef(false);
+
   const fetchEntries = useCallback(async () => {
-    setLoading(true);
+    if (!initializedRef.current) setLoading(true);
     try {
       const res = await fetch("/api/entries");
       const data = await res.json();
-      setEntries(data.entries || []);
+      const list: EntryListItem[] = data.entries || [];
+      list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setEntries(list);
     } catch (err) {
       console.error("Failed to fetch entries:", err);
     } finally {
       setLoading(false);
+      initializedRef.current = true;
     }
   }, []);
 
