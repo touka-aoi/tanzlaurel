@@ -413,6 +413,21 @@ func (r *RGA) Text() string {
 	return sb.String()
 }
 
+// TextFiltered はexcludeに含まれるノードIDの文字をスキップしたテキストを返す。
+func (r *RGA) TextFiltered(exclude map[NodeID]struct{}) string {
+	var sb strings.Builder
+	for _, n := range r.nodes {
+		if _, ok := exclude[n.id]; ok {
+			continue
+		}
+		if n.deleted {
+			continue
+		}
+		sb.WriteRune(n.value)
+	}
+	return sb.String()
+}
+
 // NodeCount はトゥームストーン含む全ノード数を返す。
 func (r *RGA) NodeCount() int {
 	return len(r.nodes)
