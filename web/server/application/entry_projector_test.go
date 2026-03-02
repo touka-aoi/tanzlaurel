@@ -89,6 +89,18 @@ func makeInsertPayload(t *testing.T, siteID uuid.UUID, timestamp uint64, value s
 	return data
 }
 
+func makeDeletePayload(t *testing.T, siteID uuid.UUID, timestamp uint64) []byte {
+	t.Helper()
+	msg := map[string]any{
+		"type":       "op",
+		"request_id": uuid.New().String(),
+		"op_type":    2,
+		"node_id":    map[string]any{"site_id": siteID.String(), "timestamp": timestamp},
+	}
+	data, _ := json.Marshal(msg)
+	return data
+}
+
 func TestEntryProjector_Apply(t *testing.T) {
 	entryStore := newMockEntryStore()
 	rgaStore := newMockRGAStateStore()
