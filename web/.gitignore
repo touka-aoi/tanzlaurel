@@ -3,3 +3,6 @@
 /server/bin/
 /server/.pid
 /cockpit/.pid
+/data/
+*.fail
+test-results/
