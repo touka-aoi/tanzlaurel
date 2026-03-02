@@ -48,7 +48,8 @@ func main() {
 	projector := application.NewEntryProjector(entryStore, rgaStateStore, markdownDir, log)
 
 	// 起動時にEventStoreからRGA復元
-	if err := projector.Restore(context.Background(), eventStore, eventStore.EntryIDs()); err != nil {
+	entryIDs := eventStore.EntryIDs()
+	if err := projector.Restore(context.Background(), eventStore, entryIDs); err != nil {
 		log.Error("projector復元エラー", "error", err)
 		os.Exit(1)
 	}

@@ -48,13 +48,13 @@ func NewEventStore(dataDir string) (*EventStore, error) {
 
 // eventJSON はJSONL保存用の構造体。
 type eventJSON struct {
-	EntryID   string `json:"entry_id"`
-	ServerSeq int64  `json:"server_seq"`
-	RequestID string `json:"request_id"`
-	EventType string `json:"event_type"`
-	SiteID    string `json:"site_id"`
+	EntryID   string          `json:"entry_id"`
+	ServerSeq int64           `json:"server_seq"`
+	RequestID string          `json:"request_id"`
+	EventType string          `json:"event_type"`
+	SiteID    string          `json:"site_id"`
 	Payload   json.RawMessage `json:"payload"`
-	CreatedAt string `json:"created_at"`
+	CreatedAt string          `json:"created_at"`
 }
 
 func (s *EventStore) loadAll() error {

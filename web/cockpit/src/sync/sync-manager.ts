@@ -24,7 +24,11 @@ export class SyncManager {
   private listeners: SyncListener[] = [];
   private removeWsHandler: (() => void) | null = null;
 
-  constructor(wsUrl: string, entryId: string, siteId: string) {
+  constructor(
+    wsUrl: string,
+    entryId: string,
+    siteId: string,
+  ) {
     this.ws = new WSClient(wsUrl);
     this.rga = new RGA(siteId);
     this.entryId = entryId;
@@ -112,7 +116,9 @@ export class SyncManager {
     // 後ろから削除（インデックスがずれないように）
     for (let i = deleteCount - 1; i >= 0; i--) {
       const nodeId = visibleNodes[prefixLen + i];
-      if (nodeId) this.delete(nodeId);
+      if (nodeId) {
+        this.delete(nodeId);
+      }
     }
 
     // 挿入
