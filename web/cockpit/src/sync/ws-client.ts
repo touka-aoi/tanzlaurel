@@ -15,7 +15,7 @@ export class WSClient {
     return this._connected;
   }
 
-  connect(): void {
+  async connect(): Promise<void> {
     if (this.ws) return;
 
     this.ws = new WebSocket(this.url);

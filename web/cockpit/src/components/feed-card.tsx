@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "preact/hooks";
+import { useRef, useState, useEffect, useCallback } from "preact/hooks";
 import { renderMarkdown } from "../lib/markdown";
 import { useDocument } from "../hooks/use-document";
 import type { EntryListItem } from "../hooks/use-entries";
@@ -16,8 +16,10 @@ export function FeedCard({
   onStartEdit,
   onStopEdit,
 }: FeedCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const needsConnection = isEditing || isExpanded;
   const { text, connected, applyTextChange } = useDocument(
-    isEditing ? entry.id : null,
+    needsConnection ? entry.id : null,
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -71,24 +73,28 @@ export function FeedCard({
     [isEditing, onStartEdit, entry.id],
   );
 
-  const PREVIEW_LIMIT = 280;
+  const PREVIEW_LINES = 6;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isClamped, setIsClamped] = useState(false);
   const date = new Date(entry.created_at).toLocaleDateString("ja-JP");
-  const rawContent = isEditing ? text : entry.content;
-  const isTruncated = !isEditing && (rawContent?.length ?? 0) > PREVIEW_LIMIT;
-  const displayContent = isTruncated
-    ? rawContent!.slice(0, PREVIEW_LIMIT)
-    : rawContent;
+  const liveText = isEditing || isExpanded ? text : entry.content;
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || isEditing || isExpanded) return;
+    setIsClamped(el.scrollHeight > el.clientHeight);
+  }, [liveText, isEditing, isExpanded]);
 
   return (
-    <div class="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] rounded-lg shadow-lg">
+    <div class="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] rounded-lg shadow-lg overflow-hidden">
       {/* 日付バー */}
-      <div class="flex items-center justify-end px-4 sm:px-5 pt-3 pb-1">
+      <div class="flex items-center gap-2 px-4 sm:px-5 pt-3 pb-1">
         {isEditing && (
           <span
-            class={`w-2 h-2 rounded-full mr-2 ${connected ? "bg-green-400" : "bg-red-400"}`}
+            class={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-red-400"}`}
           />
         )}
-        <span class="text-xs text-white/40">{date}</span>
+        <span class="ml-auto text-xs text-white/40">{date}</span>
       </div>
 
       {/* コンテンツ */}
@@ -112,19 +118,39 @@ export function FeedCard({
             class="w-full bg-transparent border-none text-base text-white/80 leading-relaxed resize-none focus:outline-none min-h-[80px]"
           />
         ) : (
-          <div class="relative">
-            <div
-              class="prose-glass text-base"
-              dangerouslySetInnerHTML={{
-                __html: renderMarkdown(displayContent || ""),
-              }}
-            />
-            {isTruncated && (
-              <div class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
-            )}
-          </div>
+          <div
+            ref={contentRef}
+            class={`prose-glass text-base ${!isExpanded ? "overflow-hidden" : ""}`}
+            style={!isExpanded ? { display: "-webkit-box", WebkitLineClamp: PREVIEW_LINES, WebkitBoxOrient: "vertical" } : undefined}
+            dangerouslySetInnerHTML={{
+              __html: renderMarkdown(liveText || ""),
+            }}
+          />
         )}
       </div>
+
+      {/* 展開/折りたたみ & 個別ページリンク */}
+      {!isEditing && (isClamped || isExpanded) && (
+        <div class="flex items-center gap-3 px-4 sm:px-5 pb-3 pt-1">
+          <button
+            type="button"
+            class="text-xs text-white/30 hover:text-white/60 transition-colors"
+            onClick={(e: Event) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+          >
+            {isExpanded ? "折りたたむ" : "もっと読む"}
+          </button>
+          <a
+            href={`/entries/${entry.id}`}
+            class="text-xs text-white/30 hover:text-white/60 transition-colors"
+            onClick={(e: Event) => e.stopPropagation()}
+          >
+            個別ページ &rarr;
+          </a>
+        </div>
+      )}
     </div>
   );
 }
