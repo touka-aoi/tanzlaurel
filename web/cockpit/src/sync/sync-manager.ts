@@ -9,6 +9,7 @@ export interface SyncState {
   text: string;
   connected: boolean;
   lastServerSeq: number;
+  authenticated: boolean;
 }
 
 type SyncListener = (state: SyncState) => void;
@@ -23,6 +24,7 @@ export class SyncManager {
   private confirmedReqIds = new Set<string>();
   private listeners: SyncListener[] = [];
   private removeWsHandler: (() => void) | null = null;
+  private _authenticated = false;
 
   constructor(
     wsUrl: string,
@@ -117,6 +119,10 @@ export class SyncManager {
     for (let i = deleteCount - 1; i >= 0; i--) {
       const nodeId = visibleNodes[prefixLen + i];
       if (nodeId) {
+        // 非認証時は認証ノードの削除をスキップ
+        if (!this._authenticated && this.rga.isNodeAuthenticated(nodeId)) {
+          continue;
+        }
         this.delete(nodeId);
       }
     }
@@ -155,11 +161,16 @@ export class SyncManager {
     return this.rga.text();
   }
 
+  get authenticated(): boolean {
+    return this._authenticated;
+  }
+
   getState(): SyncState {
     return {
       text: this.rga.text(),
       connected: this.ws.connected,
       lastServerSeq: this.lastServerSeq,
+      authenticated: this._authenticated,
     };
   }
 
@@ -198,6 +209,11 @@ export class SyncManager {
         this.handleSync(data);
         break;
 
+      case "auth_status":
+        this._authenticated = !!data.authenticated;
+        this.notify();
+        break;
+
       case "error":
         console.error("WS error:", data);
         break;
@@ -228,6 +244,7 @@ export class SyncManager {
           ? { siteId: syncOp.after.site_id, timestamp: syncOp.after.timestamp }
           : null,
         value: syncOp.value ?? "",
+        authenticated: syncOp.authenticated ?? true,
       };
 
       this.rga.apply(op);

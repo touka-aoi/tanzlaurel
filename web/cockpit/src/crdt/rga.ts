@@ -16,6 +16,7 @@ export interface Operation {
   nodeId: NodeID;
   after: NodeID | null;
   value: string;
+  authenticated?: boolean;
 }
 
 interface Node {
@@ -23,6 +24,7 @@ interface Node {
   after: NodeID | null;
   value: string;
   deleted: boolean;
+  authenticated: boolean;
 }
 
 function nodeIdEqual(a: NodeID, b: NodeID): boolean {
@@ -99,6 +101,7 @@ export class RGA {
       after: op.after,
       value: op.value,
       deleted: false,
+      authenticated: op.authenticated ?? true,
     };
 
     let insertIdx = 0;
@@ -188,6 +191,12 @@ export class RGA {
 
   visibleNodes(): NodeID[] {
     return this.nodes.filter((n) => !n.deleted).map((n) => n.id);
+  }
+
+  isNodeAuthenticated(nodeId: NodeID): boolean {
+    const idx = this.index.get(this.nodeKey(nodeId));
+    if (idx === undefined) return true;
+    return this.nodes[idx].authenticated;
   }
 
   text(): string {

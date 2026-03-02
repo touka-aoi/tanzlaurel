@@ -62,6 +62,12 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 		p.rgas[entryID] = rga
 	}
 
+	// 非認証deleteによる認証ノード削除はスキップ（opはイベントストアに記録済み）
+	if op.OpType == crdt.OpDelete && !op.Authenticated && rga.IsNodeAuthenticated(op.NodeID) {
+		p.log.Warn("projector: 非認証deleteを無視", "entryID", entryID, "nodeID", op.NodeID)
+		return
+	}
+
 	rga.Apply(op)
 
 	text := rga.Text()
@@ -86,6 +92,17 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 	}
 
 	p.saveMarkdown(entryID, text)
+}
+
+// IsNodeAuthenticated は指定エントリのノードが認証済みかどうかを返す。
+func (p *EntryProjector) IsNodeAuthenticated(entryID uuid.UUID, nodeID crdt.NodeID) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	rga, ok := p.rgas[entryID]
+	if !ok {
+		return true // RGA未ロード = 安全側
+	}
+	return rga.IsNodeAuthenticated(nodeID)
 }
 
 // Restore はEventStoreの全opからRGAを再構築し、Entryを更新する。

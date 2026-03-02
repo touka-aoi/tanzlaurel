@@ -11,7 +11,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `cd .. && ADMIN_USER=admin ADMIN_PASS=pass ADDRESS=:${TEST_BACKEND_PORT} DATA_DIR=/tmp/e2e-test-data go run ./server/cmd/`,
+      command: `cd .. && ADMIN_USER=admin ADMIN_PASSWORD=pass ADDRESS=:${TEST_BACKEND_PORT} DATA_DIR=/tmp/e2e-test-data go run ./server/cmd/`,
       port: TEST_BACKEND_PORT,
       reuseExistingServer: false,
     },

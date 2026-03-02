@@ -4,10 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"flourish/server"
 	"flourish/server/adapter/jsonfile"
 	"flourish/server/application"
+	"flourish/server/auth"
+	"flourish/server/handler"
 	"flourish/server/logger"
 )
 
@@ -54,7 +57,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := server.NewRouter(log, entryStore, syncService, projector)
+	// 認証セットアップ（ADMIN_USER + ADMIN_PASSWORD が設定されている場合のみ有効）
+	var authHandler *handler.Auth
+	adminUser := os.Getenv("ADMIN_USER")
+	adminPass := os.Getenv("ADMIN_PASSWORD")
+	if adminUser != "" && adminPass != "" {
+		keyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
+		jwtService, err := auth.NewJWTService(keyPath, 1*time.Hour)
+		if err != nil {
+			log.Error("JWT初期化エラー", "error", err)
+			os.Exit(1)
+		}
+		ticketStore := auth.NewTicketStore(1 * time.Minute)
+		authHandler = handler.NewAuth(adminUser, adminPass, jwtService, ticketStore)
+		log.Info("認証有効", "user", adminUser)
+	} else {
+		log.Info("認証無効（ADMIN_USER/ADMIN_PASSWORD未設定）")
+	}
+
+	router := server.NewRouter(log, entryStore, syncService, projector, authHandler)
 	srv := server.New(addr, router, log)
 
 	if err := srv.Run(); err != nil {

@@ -18,13 +18,15 @@ import (
 type WS struct {
 	syncService *application.SyncService
 	projector   *application.EntryProjector
+	auth        *Auth
 	log         *slog.Logger
 }
 
-func NewWS(syncService *application.SyncService, projector *application.EntryProjector, log *slog.Logger) *WS {
+func NewWS(syncService *application.SyncService, projector *application.EntryProjector, auth *Auth, log *slog.Logger) *WS {
 	return &WS{
 		syncService: syncService,
 		projector:   projector,
+		auth:        auth,
 		log:         log,
 	}
 }
@@ -71,6 +73,24 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.log.Info("websocket disconnected", "remoteAddr", r.RemoteAddr)
 	}()
 
+	// チケット検証による認証
+	authenticated := false
+	if h.auth != nil {
+		ticket := r.URL.Query().Get("ticket")
+		if ticket != "" {
+			authenticated = h.auth.RedeemTicket(ticket)
+		}
+	}
+
+	// auth_statusメッセージを送信
+	authStatusMsg, _ := json.Marshal(map[string]any{
+		"type":          "auth_status",
+		"authenticated": authenticated,
+	})
+	sub.mu.Lock()
+	conn.Write(r.Context(), websocket.MessageText, authStatusMsg)
+	sub.mu.Unlock()
+
 	for {
 		_, data, err := conn.Read(r.Context())
 		if err != nil {
@@ -89,7 +109,7 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case MsgTypeOp:
-			h.handleOp(r.Context(), conn, sub, msg, &subscribedEntries)
+			h.handleOp(r.Context(), conn, sub, msg, &subscribedEntries, authenticated)
 		case MsgTypeSyncRequest:
 			h.handleSyncRequest(r.Context(), conn, sub, msg, &subscribedEntries)
 		default:
@@ -98,7 +118,7 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscriber, msg IncomingMessage, subscribedEntries *[]uuid.UUID) {
+func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscriber, msg IncomingMessage, subscribedEntries *[]uuid.UUID, authenticated bool) {
 	entryID, err := uuid.Parse(msg.EntryID)
 	if err != nil {
 		h.writeError(conn, &msg.RequestID, "error:invalid_op", "Invalid Operation")
@@ -110,7 +130,10 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 		return
 	}
 
-	// opのpayloadをそのまま永続化
+	// サーバーが認証状態を強制付与（クライアントの自称は上書き）
+	msg.Authenticated = &authenticated
+
+	// opのpayloadをそのまま永続化（非認証deleteもイベントストアに記録する）
 	payload, _ := json.Marshal(msg)
 
 	// Subscribe if not already
@@ -203,12 +226,13 @@ func convertSyncMessage(msg application.SyncMessage) SyncMsg {
 		json.Unmarshal(op.Payload, &incoming)
 
 		ops[i] = SyncOpMsg{
-			RequestID: op.RequestID.String(),
-			ServerSeq: op.ServerSeq,
-			OpType:    incoming.OpType,
-			NodeID:    incoming.NodeID,
-			After:     incoming.After,
-			Value:     incoming.Value,
+			RequestID:     op.RequestID.String(),
+			ServerSeq:     op.ServerSeq,
+			OpType:        incoming.OpType,
+			NodeID:        incoming.NodeID,
+			After:         incoming.After,
+			Value:         incoming.Value,
+			Authenticated: incoming.Authenticated,
 		}
 	}
 

@@ -8,6 +8,8 @@ interface FeedCardProps {
   isEditing: boolean;
   onStartEdit: (id: string) => void;
   onStopEdit: () => void;
+  onDelete?: (id: string) => void;
+  getWsTicket?: () => Promise<string | null>;
 }
 
 export function FeedCard({
@@ -15,13 +17,33 @@ export function FeedCard({
   isEditing,
   onStartEdit,
   onStopEdit,
+  onDelete,
+  getWsTicket,
 }: FeedCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deleteConfirmRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const needsConnection = isEditing || isExpanded;
   const { text, connected, applyTextChange } = useDocument(
     needsConnection ? entry.id : null,
+    getWsTicket,
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 削除確認の外をクリックしたら閉じる
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        deleteConfirmRef.current &&
+        !deleteConfirmRef.current.contains(e.target as Node)
+      ) {
+        setShowDeleteConfirm(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDeleteConfirm]);
 
   // textarea以外をクリック/タップしたら編集終了
   useEffect(() => {
@@ -95,7 +117,45 @@ export function FeedCard({
           />
         )}
         <span class="ml-auto text-xs text-white/40">{date}</span>
+        {onDelete && (
+          <button
+            type="button"
+            class="text-[10px] leading-none text-red-400/50 hover:text-red-400 transition-colors border border-red-400/20 hover:border-red-400/50 rounded px-1 py-0.5"
+            onClick={(e: Event) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(true);
+            }}
+          >
+            削除
+          </button>
+        )}
       </div>
+
+      {/* 削除確認 */}
+      {showDeleteConfirm && onDelete && (
+        <div ref={deleteConfirmRef} class="px-4 sm:px-5 py-2 border-y border-red-400/10 bg-red-500/[0.03]">
+          <p class="text-xs text-white/60 mb-2">この記事を削除しますか？</p>
+          <div class="flex justify-end gap-3">
+            <button
+              type="button"
+              class="text-xs px-3 py-1 text-white/50 hover:text-white/80 transition-colors"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              class="text-xs px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-400/20 rounded text-red-300 transition-colors"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                onDelete(entry.id);
+              }}
+            >
+              削除する
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* コンテンツ */}
       <div
@@ -151,6 +211,7 @@ export function FeedCard({
           </a>
         </div>
       )}
+
     </div>
   );
 }

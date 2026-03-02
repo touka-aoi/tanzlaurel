@@ -1,6 +1,7 @@
 import { useRoute } from "preact-iso";
 import { useState, useRef, useEffect, useCallback } from "preact/hooks";
 import { useDocument } from "../hooks/use-document";
+import { useAuth } from "../hooks/use-auth";
 import { renderMarkdown } from "../lib/markdown";
 
 interface EntryDetail {
@@ -19,10 +20,12 @@ export function EntryPage(_props: { path?: string }) {
   const [entry, setEntry] = useState<EntryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { getWsTicket } = useAuth();
 
   // 編集モード時のみWS接続
-  const { text, connected, applyTextChange } = useDocument(
+  const { text, connected, authenticated, applyTextChange } = useDocument(
     isEditing ? id : null,
+    getWsTicket,
   );
 
   // 閲覧用: APIからエントリ取得

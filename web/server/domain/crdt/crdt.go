@@ -12,11 +12,12 @@ import (
 
 // payloadMsg はIncomingMessageのPayloadから必要フィールドを抽出する構造体。
 type payloadMsg struct {
-	RequestID string      `json:"request_id"`
-	OpType    int         `json:"op_type"`
-	NodeID    *payloadNID `json:"node_id"`
-	After     *payloadNID `json:"after"`
-	Value     string      `json:"value"`
+	RequestID     string      `json:"request_id"`
+	OpType        int         `json:"op_type"`
+	NodeID        *payloadNID `json:"node_id"`
+	After         *payloadNID `json:"after"`
+	Value         string      `json:"value"`
+	Authenticated *bool       `json:"authenticated,omitempty"`
 }
 
 type payloadNID struct {
@@ -71,6 +72,13 @@ func OperationFromPayload(payload []byte) (Operation, error) {
 		op.Value = r
 	}
 
+	// authenticated: 明示的にfalseが指定されない限りtrue（既存データ互換）
+	if msg.Authenticated != nil {
+		op.Authenticated = *msg.Authenticated
+	} else {
+		op.Authenticated = true
+	}
+
 	return op, nil
 }
 
@@ -85,21 +93,24 @@ type RGASnapshot struct {
 
 // NodeSnapshot はノードの永続化用構造体。
 type NodeSnapshot struct {
-	ID      NodeID  `json:"id"`
-	After   *NodeID `json:"after"`
-	Value   string  `json:"value"`
-	Deleted bool    `json:"deleted"`
+	ID            NodeID  `json:"id"`
+	After         *NodeID `json:"after"`
+	Value         string  `json:"value"`
+	Deleted       bool    `json:"deleted"`
+	Authenticated *bool   `json:"authenticated,omitempty"`
 }
 
 // Export はRGAをシリアライズ可能なスナップショットに変換する。
 func (r *RGA) Export() RGASnapshot {
 	nodes := make([]NodeSnapshot, len(r.nodes))
 	for i, n := range r.nodes {
+		auth := n.authenticated
 		nodes[i] = NodeSnapshot{
-			ID:      n.id,
-			After:   n.after,
-			Value:   string(n.value),
-			Deleted: n.deleted,
+			ID:            n.id,
+			After:         n.after,
+			Value:         string(n.value),
+			Deleted:       n.deleted,
+			Authenticated: &auth,
 		}
 	}
 
@@ -140,11 +151,17 @@ func ImportRGA(snap RGASnapshot) (*RGA, error) {
 
 	for i, ns := range snap.Nodes {
 		r, _ := utf8.DecodeRuneInString(ns.Value)
+		// 既存データ（Authenticated未設定=nil）は認証済みとして扱う
+		auth := true
+		if ns.Authenticated != nil {
+			auth = *ns.Authenticated
+		}
 		rga.nodes[i] = &node{
-			id:      ns.ID,
-			after:   ns.After,
-			value:   r,
-			deleted: ns.Deleted,
+			id:            ns.ID,
+			after:         ns.After,
+			value:         r,
+			deleted:       ns.Deleted,
+			authenticated: auth,
 		}
 		rga.index[ns.ID] = i
 	}
@@ -180,11 +197,12 @@ const (
 
 // Operation は冪等性をサポートするCRDTオペレーション。
 type Operation struct {
-	RequestID uuid.UUID `json:"request_id"`
-	OpType    OpType    `json:"op_type"`
-	NodeID    NodeID    `json:"node_id"`
-	After     *NodeID   `json:"after"`
-	Value     rune      `json:"value"`
+	RequestID     uuid.UUID `json:"request_id"`
+	OpType        OpType    `json:"op_type"`
+	NodeID        NodeID    `json:"node_id"`
+	After         *NodeID   `json:"after"`
+	Value         rune      `json:"value"`
+	Authenticated bool      `json:"authenticated"`
 }
 
 // LamportClock はイベントの順序付けのための論理時計。
@@ -226,10 +244,11 @@ type RGA struct {
 }
 
 type node struct {
-	id      NodeID
-	after   *NodeID
-	value   rune
-	deleted bool
+	id            NodeID
+	after         *NodeID
+	value         rune
+	deleted       bool
+	authenticated bool
 }
 
 // NewRGA は指定されたサイトの新しい空のRGAを作成する。
@@ -317,9 +336,10 @@ func nodeIDPriority(a, b NodeID) bool {
 // applyInsert はInsertオペレーションを内部的に適用する。
 func (r *RGA) applyInsert(op Operation) {
 	n := &node{
-		id:    op.NodeID,
-		after: op.After,
-		value: op.Value,
+		id:            op.NodeID,
+		after:         op.After,
+		value:         op.Value,
+		authenticated: op.Authenticated,
 	}
 
 	// 挿入位置を決定（afterノードの直後から探索開始）
@@ -400,6 +420,16 @@ func (r *RGA) applyDelete(op Operation) {
 		return
 	}
 	r.nodes[idx].deleted = true
+}
+
+// IsNodeAuthenticated は指定ノードが認証済みかどうかを返す。
+// ノードが存在しない場合はtrueを返す（安全側に倒す）。
+func (r *RGA) IsNodeAuthenticated(id NodeID) bool {
+	idx, ok := r.index[id]
+	if !ok {
+		return true
+	}
+	return r.nodes[idx].authenticated
 }
 
 // Text はRGAの現在のテキスト内容を返す。

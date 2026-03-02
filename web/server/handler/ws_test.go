@@ -21,7 +21,7 @@ func setupWSServer(t *testing.T) (*httptest.Server, *application.SyncService) {
 	eventStore := memory.NewEventStore()
 	syncService := application.NewSyncService(eventStore)
 	log := slog.Default()
-	wsHandler := handler.NewWS(syncService, nil, log)
+	wsHandler := handler.NewWS(syncService, nil, nil, log)
 
 	srv := httptest.NewServer(wsHandler)
 	t.Cleanup(srv.Close)
@@ -37,6 +37,13 @@ func dial(t *testing.T, srv *httptest.Server) *websocket.Conn {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.CloseNow() })
+
+	// auth_statusメッセージを読み飛ばす
+	authStatus := readJSON[map[string]any](t, conn)
+	if authStatus["type"] != "auth_status" {
+		t.Fatalf("expected auth_status, got %v", authStatus["type"])
+	}
+
 	return conn
 }
 

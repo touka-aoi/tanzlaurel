@@ -1,12 +1,14 @@
 import { useState, useCallback } from "preact/hooks";
 import { useEntries } from "../hooks/use-entries";
+import { useAuth } from "../hooks/use-auth";
 import { SyncManager } from "../sync/sync-manager";
 import { ComposeBox } from "../components/compose-box";
 import { FeedCard } from "../components/feed-card";
 
 export function FeedPage(_props: { path?: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { entries, loading, createEntry, refresh } = useEntries();
+  const { entries, loading, createEntry, deleteEntry, refresh } = useEntries();
+  const { authenticated, getWsTicket } = useAuth();
 
   const handleSubmit = useCallback(
     async (text: string) => {
@@ -62,6 +64,8 @@ export function FeedPage(_props: { path?: string }) {
             isEditing={editingId === entry.id}
             onStartEdit={handleStartEdit}
             onStopEdit={handleStopEdit}
+            onDelete={authenticated ? deleteEntry : undefined}
+            getWsTicket={authenticated ? getWsTicket : undefined}
           />
         ))
       )}

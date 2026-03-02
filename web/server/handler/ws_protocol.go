@@ -27,6 +27,7 @@ type IncomingMessage struct {
 	After         *NodeIDMsg `json:"after,omitempty"`
 	Value         string     `json:"value,omitempty"`
 	LastServerSeq int64      `json:"last_server_seq,omitempty"`
+	Authenticated *bool      `json:"authenticated,omitempty"`
 }
 
 // AckMsg はACKレスポンス。
@@ -39,12 +40,13 @@ type AckMsg struct {
 
 // SyncOpMsg はsync内の個別op。
 type SyncOpMsg struct {
-	RequestID string     `json:"request_id"`
-	ServerSeq int64      `json:"server_seq"`
-	OpType    int        `json:"op_type"`
-	NodeID    *NodeIDMsg `json:"node_id"`
-	After     *NodeIDMsg `json:"after,omitempty"`
-	Value     string     `json:"value,omitempty"`
+	RequestID     string     `json:"request_id"`
+	ServerSeq     int64      `json:"server_seq"`
+	OpType        int        `json:"op_type"`
+	NodeID        *NodeIDMsg `json:"node_id"`
+	After         *NodeIDMsg `json:"after,omitempty"`
+	Value         string     `json:"value,omitempty"`
+	Authenticated *bool      `json:"authenticated,omitempty"`
 }
 
 // SyncMsg はsyncメッセージ。
