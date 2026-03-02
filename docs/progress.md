@@ -158,3 +158,38 @@ JoinPayload (16 bytes):
 
 - `docs/architecture/protocol.md` - JoinPayload定義追加
 - `docs/architecture/protocol_subtype.md` - SubType設計の説明（新規作成）
+
+---
+
+## 2026-03-01: サーバー側RGA管理・Entry永続化・Markdown出力を実装
+
+### 背景
+
+SyncServiceはopのバイト列をEventStoreに保存・配信するだけで、サーバー側RGAを構築していなかった。
+Entry.Text/Title/Contentも空のまま。OSOT(SyncService)とProjector(EntryProjector)の責務を分離した。
+
+### 実装した変更
+
+- `domain/crdt/crdt.go`: `OperationFromPayload` (Payload→Operation変換)、`Export`/`ImportRGA` (RGAスナップショット)
+- `application/entry_projector.go`: RGA管理 + Entry更新 + Markdown出力
+- `adapter/jsonfile/`: JSONファイルベースのEventStore/EntryStore/RGAStateStore
+- `handler/ws.go`: Broadcast後にProjector呼び出し
+- `cmd/main.go`: jsonfileアダプタ + EntryProjector注入 + 起動時Restore
+- `web/Makefile`: `make dev`/`make stop`/`make restart`
+
+### 懸念1: RGAスナップショットからpendingが消失
+
+**問題**: RGA.Applyでseenに登録された後にafterノード未到着でpendingに入ったopが、Export時に保存されず、Import後に冪等で弾かれてノードが永久に失われた。
+
+**解決**: `RGASnapshot.Pending`フィールドを追加し、Export/Importでpendingも永続化するようにした。
+
+---
+
+## TODO
+
+| # | タスク | 備考 |
+|---|--------|------|
+| 1 | ScyllaDBへの移行 | 現在はJSONファイル永続化。CDC経由でProjectorを非同期化。ライブラリ: [gocqlx](https://github.com/scylladb/gocqlx) |
+| 2 | デプロイ環境構築 | Docker Compose + Compute Engine |
+| 3 | フロントのデザイン整理 | UI/UXの改善 |
+| 4 | 認証/認可 + 管理画面 | ログイン機能。エントリごとに公開版(誰でも編集可)と原文(ログインユーザーのみ編集可)の2状態を保持。閲覧時にトグルで切替可能。荒らし対策として原文をいつでも表示・復元できる |
