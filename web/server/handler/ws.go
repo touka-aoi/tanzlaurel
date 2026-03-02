@@ -22,7 +22,11 @@ type WS struct {
 }
 
 func NewWS(syncService *application.SyncService, projector *application.EntryProjector, log *slog.Logger) *WS {
-	return &WS{syncService: syncService, projector: projector, log: log}
+	return &WS{
+		syncService: syncService,
+		projector:   projector,
+		log:         log,
+	}
 }
 
 // wsSubscriber はWebSocket接続のSubscriber実装。
@@ -135,8 +139,12 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 	conn.Write(ctx, websocket.MessageText, data)
 	sub.mu.Unlock()
 
-	// 重複でなければbroadcast + projector
+	// 重複でなければprojector適用 → broadcast
 	if ack.ServerSeq > 0 {
+		if h.projector != nil {
+			h.projector.Apply(ctx, entryID, payload)
+		}
+
 		h.syncService.Broadcast(entryID, application.SyncMessage{
 			EntryID: entryID,
 			Ops: []application.SyncOp{
@@ -148,11 +156,6 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 			},
 			LatestServerSeq: ack.ServerSeq,
 		})
-
-		// Projector: RGA適用 + Entry更新（Broadcast後）
-		if h.projector != nil {
-			h.projector.Apply(ctx, entryID, payload)
-		}
 	}
 }
 
