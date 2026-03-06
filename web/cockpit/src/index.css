@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    @apply bg-slate-950 text-white/90 antialiased;
+  }
+
+  /* markdown prose styling for dark mode */
+  .prose-glass {
+    @apply text-white/80 leading-relaxed;
+  }
+  .prose-glass h1 {
+    @apply text-2xl font-bold text-white/90 mt-6 mb-3;
+  }
+  .prose-glass h2 {
+    @apply text-xl font-semibold text-white/90 mt-5 mb-2;
+  }
+  .prose-glass h3 {
+    @apply text-lg font-semibold text-white/85 mt-4 mb-2;
+  }
+  .prose-glass p {
+    @apply my-2;
+  }
+  .prose-glass a {
+    @apply text-blue-400/80 underline;
+  }
+  .prose-glass code {
+    @apply bg-white/[0.08] rounded px-1.5 py-0.5 text-sm font-mono;
+  }
+  .prose-glass pre {
+    @apply bg-white/[0.05] rounded-md p-4 my-3 overflow-x-auto;
+  }
+  .prose-glass pre code {
+    @apply bg-transparent p-0;
+  }
+  .prose-glass ul {
+    @apply list-disc pl-5 my-2;
+  }
+  .prose-glass ol {
+    @apply list-decimal pl-5 my-2;
+  }
+  .prose-glass blockquote {
+    @apply border-l-2 border-white/20 pl-4 my-3 text-white/60 italic;
+  }
+}

@@ -1,5 +1,17 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(go:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)"
+    ],
+    "allowedTools": [
+      "mcp__serena__*"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./build)"
