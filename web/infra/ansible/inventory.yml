@@ -4,3 +4,4 @@ all:
       ansible_host: 192.168.1.73
       ansible_user: mina
       ansible_ssh_private_key_file: ~/.ssh/minamo-node
+      ansible_python_interpreter: /usr/bin/python3.12
