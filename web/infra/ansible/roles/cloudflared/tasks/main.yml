@@ -1,0 +1,18 @@
+---
+- name: cloudflaredをインストール
+  ansible.builtin.apt:
+    deb: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+    state: present
+
+- name: cloudflaredをtunnel tokenでサービス登録
+  ansible.builtin.command:
+    cmd: cloudflared service install {{ tunnel_token }}
+  args:
+    creates: /etc/systemd/system/cloudflared.service
+
+- name: cloudflaredサービスを有効化・起動
+  ansible.builtin.systemd:
+    name: cloudflared
+    enabled: true
+    state: started
+    daemon_reload: true
