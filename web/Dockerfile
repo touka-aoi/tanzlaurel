@@ -22,5 +22,5 @@ COPY --from=builder /bin/server /server
 
 EXPOSE 8080
 
-ENTRYPOINT ["dotenvx", "run", "--"]
+ENTRYPOINT ["dotenvx", "run", "-f", ".env.production", "--"]
 CMD ["/server"]
