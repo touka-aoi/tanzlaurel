@@ -14,7 +14,7 @@ provider "cloudflare" {
 resource "cloudflare_zero_trust_tunnel_cloudflared" "blog" {
   account_id = var.cloudflare_account_id
   name       = var.tunnel_name
-  secret     = var.tunnel_secret
+  tunnel_secret     = var.tunnel_secret
 }
 
 resource "cloudflare_zero_trust_tunnel_cloudflared_config" "blog" {
@@ -40,4 +40,5 @@ resource "cloudflare_dns_record" "blog" {
   type    = "CNAME"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.blog.id}.cfargotunnel.com"
   proxied = true
+  ttl     = 1
 }

@@ -15,13 +15,11 @@
     force: true
   become_user: "{{ ansible_user }}"
 
-- name: .envファイルを配置
-  ansible.builtin.template:
-    dest: "{{ app_dir }}/web/.env"
+- name: .env.keysを配置
+  ansible.builtin.copy:
+    dest: "{{ app_dir }}/web/.env.keys"
     content: |
-      ADMIN_USER={{ admin_user }}
-      ADMIN_PASSWORD={{ admin_password }}
-      TUNNEL_TOKEN={{ tunnel_token }}
+      DOTENV_PRIVATE_KEY_PRODUCTION={{ dotenv_private_key }}
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"

@@ -5,7 +5,7 @@ output "tunnel_id" {
 
 output "tunnel_token" {
   description = "Tunnel token for cloudflared"
-  value       = cloudflare_zero_trust_tunnel_cloudflared.blog.tunnel_token
+  value       = cloudflare_zero_trust_tunnel_cloudflared.blog.tunnel_secret
   sensitive   = true
 }
 
