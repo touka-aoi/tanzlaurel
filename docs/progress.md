@@ -185,11 +185,32 @@ Entry.Text/Title/Contentも空のまま。OSOT(SyncService)とProjector(EntryPro
 
 ---
 
+## 2026-03-07: インフラ構築 (Docker Compose + Cloudflare Tunnel + Ansible)
+
+### 実装した変更
+
+- `web/Dockerfile`: Go multi-stage build (Go 1.26 → distroless)
+- `web/cockpit/Dockerfile`: Node build → Nginx配信
+- `web/docker-compose.yml`: app + nginx + cloudflaredの3コンテナ構成
+- `web/infra/nginx/default.conf`: 静的ファイル配信 + APIリバースプロキシ(WebSocket対応) + SPA fallback
+- `web/infra/terraform/`: Cloudflare Tunnel + DNS設定 (main.tf, variables.tf, outputs.tf)
+- `web/infra/ansible/`: VM自動セットアップ (docker, cloudflared, app roles)
+
+### アーキテクチャ
+
+```
+Internet → Cloudflare Tunnel → nginx(:80) → app(:8080)
+                                  ↓
+                          静的ファイル (SPA)
+```
+
+---
+
 ## TODO
 
 | # | タスク | 備考 |
 |---|--------|------|
 | 1 | ScyllaDBへの移行 | 現在はJSONファイル永続化。CDC経由でProjectorを非同期化。ライブラリ: [gocqlx](https://github.com/scylladb/gocqlx) |
-| 2 | デプロイ環境構築 | Docker Compose + Compute Engine |
+| 2 | ~~デプロイ環境構築~~ | ✅ Docker Compose + Cloudflare Tunnel + Ansible |
 | 3 | フロントのデザイン整理 | UI/UXの改善 |
 | 4 | 認証/認可 + 管理画面 | ログイン機能。エントリごとに公開版(誰でも編集可)と原文(ログインユーザーのみ編集可)の2状態を保持。閲覧時にトグルで切替可能。荒らし対策として原文をいつでも表示・復元できる |
