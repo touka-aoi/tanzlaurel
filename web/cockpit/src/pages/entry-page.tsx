@@ -23,7 +23,7 @@ export function EntryPage(_props: { path?: string }) {
   const { getWsTicket } = useAuth();
 
   // 編集モード時のみWS接続
-  const { text, connected, authenticated, applyTextChange } = useDocument(
+  const { text, connected, applyTextChange } = useDocument(
     isEditing ? id : null,
     getWsTicket,
   );

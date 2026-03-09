@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RGA, type Operation, OpType } from "./rga";
+import { RGA, type Operation } from "./rga";
 
 function applyAll(rga: RGA, ops: Operation[]) {
   for (const op of ops) {
@@ -11,7 +11,7 @@ describe("RGA", () => {
   it("順次挿入でテキストが構築される", () => {
     const rga = new RGA("site-a");
     const op1 = rga.insert(null, "H");
-    const op2 = rga.insert(op1.nodeId, "i");
+    rga.insert(op1.nodeId, "i");
     expect(rga.text()).toBe("Hi");
   });
 
@@ -25,10 +25,10 @@ describe("RGA", () => {
   it("削除でトゥームストーンになる", () => {
     const rga = new RGA("site-a");
     const op1 = rga.insert(null, "a");
-    const op2 = rga.insert(op1.nodeId, "b");
-    const op3 = rga.insert(op2.nodeId, "c");
+    const insB = rga.insert(op1.nodeId, "b");
+    rga.insert(insB.nodeId, "c");
 
-    rga.delete(op2.nodeId);
+    rga.delete(insB.nodeId);
     expect(rga.text()).toBe("ac");
   });
 
