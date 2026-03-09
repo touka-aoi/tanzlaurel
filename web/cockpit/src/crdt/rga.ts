@@ -206,13 +206,14 @@ export class RGA {
       .join("");
   }
 
-  insert(after: NodeID | null, value: string): Operation {
+  insert(after: NodeID | null, value: string, authenticated?: boolean): Operation {
     const op: Operation = {
       requestId: genRequestId(),
       opType: OpType.Insert,
       nodeId: this.tick(),
       after,
       value,
+      authenticated,
     };
     this.apply(op);
     return op;

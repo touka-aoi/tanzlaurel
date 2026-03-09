@@ -18,7 +18,6 @@ export class SyncManager {
   private ws: WSClient;
   private rga: RGA;
   private entryId: string;
-  private siteId: string;
   private lastServerSeq = 0;
   private pendingAcks = new Map<string, Operation>();
   private confirmedReqIds = new Set<string>();
@@ -34,7 +33,7 @@ export class SyncManager {
     this.ws = new WSClient(wsUrl);
     this.rga = new RGA(siteId);
     this.entryId = entryId;
-    this.siteId = siteId;
+
   }
 
   connect(): void {
@@ -50,7 +49,7 @@ export class SyncManager {
   }
 
   insert(after: NodeID | null, value: string): void {
-    const op = this.rga.insert(after, value);
+    const op = this.rga.insert(after, value, this._authenticated);
     const reqId = genReqId();
     this.pendingAcks.set(reqId, op);
 
@@ -132,7 +131,7 @@ export class SyncManager {
       prefixLen > 0 ? visibleNodes[prefixLen - 1] ?? null : null;
     for (const ch of insertChars) {
       const afterCopy = after;
-      const op = this.rga.insert(afterCopy, ch);
+      const op = this.rga.insert(afterCopy, ch, this._authenticated);
       const reqId = genReqId();
       this.pendingAcks.set(reqId, op);
 

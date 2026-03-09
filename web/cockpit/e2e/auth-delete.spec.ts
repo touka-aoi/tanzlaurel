@@ -212,6 +212,41 @@ test("認証ユーザーは非認証ユーザーの文字を削除できる", as
   expect(textAfter).toBe("");
 });
 
+test("ゲストが同一セッションで入力した文字を削除できる", async ({
+  browser,
+}) => {
+  const entryId = await createEntryViaAPI();
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+
+  // エントリページを開いて編集モードに入る
+  await page.goto(`/entries/${entryId}`);
+  await page.locator(".prose-glass").dispatchEvent("click");
+  const textarea = page.locator("textarea");
+  await expect(textarea).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator("article .bg-green-400")).toBeVisible({ timeout: 10_000 });
+
+  // テキストを入力
+  await textarea.type("ゲスト入力", { delay: 50 });
+  await expect(textarea).toHaveValue("ゲスト入力", { timeout: 5_000 });
+
+  // 同じセッションのまま全選択して削除
+  const mod = process.platform === "darwin" ? "Meta" : "Control";
+  await textarea.press(`${mod}+a`);
+  await textarea.press("Backspace");
+
+  // テキストが空になることを確認
+  await expect(textarea).toHaveValue("", { timeout: 5_000 });
+
+  // サーバー側でも空になっていることを確認
+  await waitForSync(page);
+  await ctx.close();
+
+  const textAfter = await getEntryText(entryId);
+  expect(textAfter).toBe("");
+});
+
 test("記事削除時に確認モーダルが表示される", async ({ browser }) => {
   const entryId = await createEntryViaAPI();
 
