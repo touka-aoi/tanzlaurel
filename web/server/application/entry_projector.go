@@ -44,15 +44,15 @@ func NewEntryProjector(entryStore domain.EntryStore, rgaStateStore RGAStateStore
 	}
 }
 
-// Apply はopをRGAに適用し、Entryを更新する。
-func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload []byte) {
+// Apply はopをRGAに適用し、Entryを更新する。適用が拒否された場合はfalseを返す。
+func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload []byte) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	op, err := crdt.OperationFromPayload(payload)
 	if err != nil {
 		p.log.Error("projector: payload変換失敗", "entryID", entryID, "error", err)
-		return
+		return false
 	}
 
 	rga, ok := p.rgas[entryID]
@@ -65,7 +65,7 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 	// 非認証deleteによる認証ノード削除はスキップ（opはイベントストアに記録済み）
 	if op.OpType == crdt.OpDelete && !op.Authenticated && rga.IsNodeAuthenticated(op.NodeID) {
 		p.log.Warn("projector: 非認証deleteを無視", "entryID", entryID, "nodeID", op.NodeID)
-		return
+		return false
 	}
 
 	rga.Apply(op)
@@ -76,7 +76,7 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 	entry, err := p.entryStore.FindByID(ctx, entryID)
 	if err != nil {
 		p.log.Error("projector: entry取得失敗", "entryID", entryID, "error", err)
-		return
+		return false
 	}
 	entry.Title = title
 	entry.Content = content
@@ -84,7 +84,7 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 
 	if err := p.entryStore.Save(ctx, entry); err != nil {
 		p.log.Error("projector: entry保存失敗", "entryID", entryID, "error", err)
-		return
+		return false
 	}
 
 	if err := p.rgaStateStore.SaveRGA(ctx, entryID, rga.Export()); err != nil {
@@ -92,6 +92,7 @@ func (p *EntryProjector) Apply(ctx context.Context, entryID uuid.UUID, payload [
 	}
 
 	p.saveMarkdown(entryID, text)
+	return true
 }
 
 // IsNodeAuthenticated は指定エントリのノードが認証済みかどうかを返す。
