@@ -29,6 +29,7 @@ export function FeedCard({
     getWsTicket,
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editContainerRef = useRef<HTMLDivElement>(null);
 
   // 削除確認の外をクリックしたら閉じる
   useEffect(() => {
@@ -51,8 +52,8 @@ export function FeedCard({
 
     const handler = (e: MouseEvent | TouchEvent) => {
       if (
-        textareaRef.current &&
-        !textareaRef.current.contains(e.target as Node)
+        editContainerRef.current &&
+        !editContainerRef.current.contains(e.target as Node)
       ) {
         onStopEdit();
       }
@@ -165,18 +166,35 @@ export function FeedCard({
         }`}
       >
         {isEditing ? (
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onInput={handleInput}
-            onKeyDown={(e: KeyboardEvent) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                onStopEdit();
-              }
-            }}
-            class="w-full bg-transparent border-none text-base text-white/80 leading-relaxed resize-none focus:outline-none min-h-[80px]"
-          />
+          <div ref={editContainerRef}>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onInput={handleInput}
+              onKeyDown={(e: KeyboardEvent) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  onStopEdit();
+                }
+              }}
+              class="w-full bg-transparent border-none text-base text-white/80 leading-relaxed resize-none focus:outline-none min-h-[80px]"
+            />
+            <div class="flex items-center justify-end border-t border-white/[0.15] px-2 py-1">
+              <button
+                type="button"
+                onClick={(e: Event) => {
+                  e.stopPropagation();
+                  onStopEdit();
+                }}
+                class="flex items-center justify-center w-8 h-8 rounded text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                aria-label="編集を完了する"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
         ) : (
           <div
             ref={contentRef}
