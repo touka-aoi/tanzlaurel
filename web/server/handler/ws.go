@@ -162,10 +162,15 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 	conn.Write(ctx, websocket.MessageText, data)
 	sub.mu.Unlock()
 
-	// 重複でなければprojector適用 → broadcast
+	// 重複でなければprojector適用 → broadcast（拒否時はブロードキャストしない）
 	if ack.ServerSeq > 0 {
+		applied := true
 		if h.projector != nil {
-			h.projector.Apply(ctx, entryID, payload)
+			applied = h.projector.Apply(ctx, entryID, payload)
+		}
+
+		if !applied {
+			return
 		}
 
 		h.syncService.Broadcast(entryID, application.SyncMessage{
