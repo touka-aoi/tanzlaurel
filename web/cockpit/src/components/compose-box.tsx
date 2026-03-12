@@ -43,15 +43,30 @@ export function ComposeBox({ onSubmit }: ComposeBoxProps) {
   }, []);
 
   return (
-    <textarea
-      ref={textareaRef}
-      value={text}
-      onInput={handleInput}
-      onKeyDown={handleKeyDown}
-      placeholder="本文を入力..."
-      rows={3}
-      disabled={submitting}
-      class="w-full bg-white/[0.05] border border-white/[0.15] rounded-lg px-4 py-3 text-base text-white/90 placeholder-white/50 resize-none focus:outline-none focus:border-white/30 transition-colors disabled:opacity-50"
-    />
+    <div class="flex flex-col gap-2">
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        placeholder="本文を入力..."
+        rows={3}
+        disabled={submitting}
+        class="w-full bg-white/[0.05] border border-white/[0.15] rounded-lg px-4 py-3 text-base text-white/90 placeholder-white/50 resize-none focus:outline-none focus:border-white/30 transition-colors disabled:opacity-50"
+      />
+      <div class="flex items-center justify-end gap-3">
+        <span class="hidden sm:block text-xs text-white/30">
+          ⌘/Ctrl+Enter で投稿
+        </span>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!text.trim() || submitting}
+          class="px-4 py-1.5 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+        >
+          {submitting ? "投稿中..." : "投稿"}
+        </button>
+      </div>
+    </div>
   );
 }
