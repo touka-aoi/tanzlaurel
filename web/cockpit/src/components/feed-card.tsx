@@ -70,11 +70,8 @@ export function FeedCard({
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height =
-        textareaRef.current.scrollHeight + "px";
     }
-  }, [isEditing, text]);
+  }, [isEditing]);
 
   const handleInput = useCallback(
     (e: Event) => {
