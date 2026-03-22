@@ -12,7 +12,7 @@ export function LogoutPage(_props: { path?: string }) {
 
   return (
     <div class="flex justify-center py-16">
-      <div class="text-white/30 text-sm">ログアウト中...</div>
+      <div class="font-mono text-[11px] text-ink-muted">ログアウト中...</div>
     </div>
   );
 }

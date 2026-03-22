@@ -45,7 +45,7 @@ export function ComposeBox({ onSubmit }: ComposeBoxProps) {
   const canSubmit = text.trim().length > 0 && !submitting;
 
   return (
-    <div class="w-full bg-white/[0.05] border border-white/[0.15] rounded-lg overflow-hidden focus-within:border-white/30 transition-colors">
+    <div class="w-full bg-ink-surface border border-ink-border rounded overflow-hidden focus-within:border-ink-muted transition-colors">
       <textarea
         ref={textareaRef}
         value={text}
@@ -54,14 +54,14 @@ export function ComposeBox({ onSubmit }: ComposeBoxProps) {
         placeholder="本文を入力..."
         rows={3}
         disabled={submitting}
-        class="w-full bg-transparent px-4 py-3 text-base text-white/90 placeholder-white/50 resize-none focus:outline-none disabled:opacity-50"
+        class="w-full bg-transparent px-4 py-3 text-base text-ink-text font-serif placeholder:text-ink-muted resize-none focus:outline-none disabled:opacity-50"
       />
-      <div class="flex items-center justify-end border-t border-white/[0.15] px-2 py-1">
+      <div class="flex items-center justify-end border-t border-ink-border px-2 py-1">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          class="flex items-center justify-center w-8 h-8 rounded text-white/50 hover:text-white/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          class="flex items-center justify-center w-8 h-8 rounded text-ink-muted hover:text-ink-sub transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="投稿する"
         >
           <svg
