@@ -41,4 +41,4 @@ restart: stop dev
 
 # デプロイ（dotenvxで秘密情報を注入してAnsible実行）
 deploy:
-	@cd infra/ansible && dotenvx run -f ../../.env.production -- ansible-playbook -i inventory.yml playbook.yml
+	@cd infra/ansible && dotenvx run -f ../../.env.keys -f ../../.env.production -- ansible-playbook -i inventory.yml playbook.yml
