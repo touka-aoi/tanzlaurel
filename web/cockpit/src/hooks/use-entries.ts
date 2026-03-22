@@ -44,7 +44,7 @@ export function useEntries() {
 
   const deleteEntry = useCallback(
     async (id: string) => {
-      await fetch(`/api/entries/${id}`, { method: "DELETE" });
+      await fetch(`/api/admin/entries/${id}/delete`, { method: "POST" });
       await fetchEntries();
     },
     [fetchEntries],

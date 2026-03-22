@@ -3,10 +3,10 @@ package crdt_test
 import (
 	"testing"
 
-	"flourish/server/domain/crdt"
-
 	"github.com/google/uuid"
 	"pgregory.net/rapid"
+
+	"flourish/server/domain/crdt"
 )
 
 // --- ヘルパー ---

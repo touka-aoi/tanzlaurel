@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"flourish/server/adapter/memory"
 	"flourish/server/domain"
-
-	"github.com/google/uuid"
 )
 
 func TestEventStore_Append_AssignsSeq(t *testing.T) {
@@ -75,7 +75,7 @@ func TestEventStore_ListAfter(t *testing.T) {
 	ctx := context.Background()
 	entryID := uuid.New()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		store.Append(ctx, domain.Event{
 			EntryID:   entryID,
 			RequestID: uuid.New(),
@@ -108,7 +108,7 @@ func TestEventStore_MaxServerSeq(t *testing.T) {
 		t.Errorf("空のストアのMaxServerSeqは0: got %d", maxSeq)
 	}
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		store.Append(ctx, domain.Event{
 			EntryID:   entryID,
 			RequestID: uuid.New(),

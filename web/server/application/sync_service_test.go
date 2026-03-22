@@ -6,12 +6,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"flourish/server/adapter/memory"
 	"flourish/server/application"
 	"flourish/server/domain"
 	"flourish/server/domain/crdt"
-
-	"github.com/google/uuid"
 )
 
 type mockSubscriber struct {

@@ -10,10 +10,10 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
+
 	"flourish/server/domain"
 	"flourish/server/domain/crdt"
-
-	"github.com/google/uuid"
 )
 
 // RGAStateStore はRGAスナップショットの永続化を担う。

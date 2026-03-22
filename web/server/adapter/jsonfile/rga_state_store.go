@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"flourish/server/domain/crdt"
-
 	"github.com/google/uuid"
+
+	"flourish/server/domain/crdt"
 )
 
 // RGAStateStore はRGAスナップショットのJSONファイル永続化。

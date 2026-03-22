@@ -183,7 +183,7 @@ func ImportRGA(snap RGASnapshot) (*RGA, error) {
 
 // NodeID はRGA内のノードを一意に識別する。
 type NodeID struct {
-	ReplicaID    uuid.UUID `json:"replica_id"`
+	ReplicaID uuid.UUID `json:"replica_id"`
 	Timestamp uint64    `json:"timestamp"`
 }
 
@@ -207,8 +207,8 @@ type Operation struct {
 
 // LamportClock はイベントの順序付けのための論理時計。
 type LamportClock struct {
-	replicaID  uuid.UUID
-	counter uint64
+	replicaID uuid.UUID
+	counter   uint64
 }
 
 // NewLamportClock は指定されたサイトの新しいLamportClockを作成する。

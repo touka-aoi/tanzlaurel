@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"flourish/server/adapter/jsonfile"
 	"flourish/server/domain"
-
-	"github.com/google/uuid"
 )
 
 func TestEventStore_AppendAndList(t *testing.T) {

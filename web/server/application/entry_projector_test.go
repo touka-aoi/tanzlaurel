@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"flourish/server/application"
 	"flourish/server/domain"
 	"flourish/server/domain/crdt"
-
-	"github.com/google/uuid"
 )
 
 // mockEntryStore はテスト用のEntryStore。
@@ -73,7 +73,11 @@ func (s *mockRGAStateStore) ListRGAEntryIDs(_ context.Context) ([]uuid.UUID, err
 	return ids, nil
 }
 
-func makeInsertPayload(t *testing.T, siteID uuid.UUID, timestamp uint64, value string, after *struct{ SiteID uuid.UUID; Timestamp uint64 }) []byte {
+func makeInsertPayload(t *testing.T, siteID uuid.UUID, timestamp uint64, value string, after *struct {
+	SiteID    uuid.UUID
+	Timestamp uint64
+},
+) []byte {
 	t.Helper()
 	msg := map[string]any{
 		"type":       "op",
@@ -129,7 +133,10 @@ func TestEntryProjector_Apply(t *testing.T) {
 	}
 
 	// 'i' をHの後に挿入
-	afterH := &struct{ SiteID uuid.UUID; Timestamp uint64 }{siteID, 1}
+	afterH := &struct {
+		SiteID    uuid.UUID
+		Timestamp uint64
+	}{siteID, 1}
 	payload2 := makeInsertPayload(t, siteID, 2, "i", afterH)
 	projector.Apply(context.Background(), entryID, payload2)
 
@@ -159,13 +166,22 @@ func TestEntryProjector_TitleFromFirstLine(t *testing.T) {
 	}
 
 	// "AB\nCD" を挿入
-	chars := []struct{ ch string; ts uint64 }{
+	chars := []struct {
+		ch string
+		ts uint64
+	}{
 		{"A", 1}, {"B", 2}, {"\n", 3}, {"C", 4}, {"D", 5},
 	}
 	for i, c := range chars {
-		var after *struct{ SiteID uuid.UUID; Timestamp uint64 }
+		var after *struct {
+			SiteID    uuid.UUID
+			Timestamp uint64
+		}
 		if i > 0 {
-			after = &struct{ SiteID uuid.UUID; Timestamp uint64 }{siteID, chars[i-1].ts}
+			after = &struct {
+				SiteID    uuid.UUID
+				Timestamp uint64
+			}{siteID, chars[i-1].ts}
 		}
 		payload := makeInsertPayload(t, siteID, c.ts, c.ch, after)
 		projector.Apply(context.Background(), entryID, payload)

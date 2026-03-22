@@ -2,18 +2,17 @@ package handler_test
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"flourish/server/adapter/memory"
-	"flourish/server/application"
-	"flourish/server/handler"
-
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 
-	"log/slog"
+	"flourish/server/adapter/memory"
+	"flourish/server/application"
+	"flourish/server/handler"
 )
 
 func setupWSServer(t *testing.T) (*httptest.Server, *application.SyncService) {

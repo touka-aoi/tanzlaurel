@@ -29,29 +29,6 @@ export function useAuth() {
     checkAuth();
   }, [checkAuth]);
 
-  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        Authorization: "Basic " + btoa(`${username}:${password}`),
-      },
-    });
-    if (res.ok) {
-      setState({ authenticated: true, loading: false });
-      return true;
-    }
-    return false;
-  }, []);
-
-  const logout = useCallback(async () => {
-    await fetch("/api/logout", {
-      method: "POST",
-      credentials: "same-origin",
-    });
-    setState({ authenticated: false, loading: false });
-  }, []);
-
   const getWsTicket = useCallback(async (): Promise<string | null> => {
     if (!state.authenticated) return null;
     try {
@@ -69,5 +46,5 @@ export function useAuth() {
     return null;
   }, [state.authenticated]);
 
-  return { ...state, login, logout, getWsTicket, checkAuth };
+  return { ...state, getWsTicket, checkAuth };
 }

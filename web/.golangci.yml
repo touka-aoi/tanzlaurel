@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  enable:
+    - staticcheck
+    - gosec
+    - errcheck
+    - revive
+    - govet
+    - modernize
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule

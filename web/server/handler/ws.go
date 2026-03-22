@@ -8,10 +8,10 @@ import (
 	"slices"
 	"sync"
 
-	"flourish/server/application"
-
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
+
+	"flourish/server/application"
 )
 
 // WS はWebSocketハンドラー。

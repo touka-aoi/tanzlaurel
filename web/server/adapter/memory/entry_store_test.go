@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"flourish/server/adapter/memory"
 	"flourish/server/domain"
-
-	"github.com/google/uuid"
 )
 
 func TestEntryStore_SaveAndFindByID(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"flourish/server/domain"
-
 	"github.com/google/uuid"
+
+	"flourish/server/domain"
 )
 
 // Subscriber はsyncメッセージの受信者。

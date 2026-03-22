@@ -5,17 +5,17 @@ import (
 	"sync"
 	"time"
 
-	"flourish/server/domain"
-
 	"github.com/google/uuid"
+
+	"flourish/server/domain"
 )
 
 // EventStore はイベントのインメモリ実装。
 type EventStore struct {
 	mu     sync.RWMutex
 	events map[uuid.UUID][]domain.Event // entryID -> events
-	seqs   map[uuid.UUID]int64         // entryID -> 最新seq
-	seen   map[uuid.UUID]struct{}      // request_id -> 重複検知
+	seqs   map[uuid.UUID]int64          // entryID -> 最新seq
+	seen   map[uuid.UUID]struct{}       // request_id -> 重複検知
 }
 
 func NewEventStore() *EventStore {

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"flourish/server/domain/crdt"
-
 	"github.com/google/uuid"
+
+	"flourish/server/domain/crdt"
 )
 
 func TestOperationFromPayload(t *testing.T) {

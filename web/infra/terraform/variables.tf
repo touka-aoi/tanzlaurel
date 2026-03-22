@@ -31,3 +31,19 @@ variable "tunnel_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "google_oauth_client_id" {
+  description = "Google OAuth client ID for CF Access"
+  type        = string
+}
+
+variable "google_oauth_client_secret" {
+  description = "Google OAuth client secret for CF Access"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_email" {
+  description = "Admin email address allowed to access protected paths"
+  type        = string
+}

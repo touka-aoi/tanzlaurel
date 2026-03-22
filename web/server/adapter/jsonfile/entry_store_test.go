@@ -3,10 +3,10 @@ package jsonfile_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"flourish/server/adapter/jsonfile"
 	"flourish/server/domain"
-
-	"github.com/google/uuid"
 )
 
 func TestEntryStore_SaveAndReload(t *testing.T) {

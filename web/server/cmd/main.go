@@ -57,22 +57,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 認証セットアップ（ADMIN_USER + ADMIN_PASSWORD が設定されている場合のみ有効）
+	// 認証セットアップ（CF_ACCESS_TEAM_DOMAIN + CF_ACCESS_AUDIENCE が設定されている場合のみ有効）
 	var authHandler *handler.Auth
-	adminUser := os.Getenv("ADMIN_USER")
-	adminPass := os.Getenv("ADMIN_PASSWORD")
-	if adminUser != "" && adminPass != "" {
-		keyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
-		jwtService, err := auth.NewJWTService(keyPath, 1*time.Hour)
+	cfTeamDomain := os.Getenv("CF_ACCESS_TEAM_DOMAIN")
+	cfAudience := os.Getenv("CF_ACCESS_AUDIENCE")
+	if cfTeamDomain != "" && cfAudience != "" {
+		cfAccess, err := auth.NewCFAccessVerifier(cfTeamDomain, cfAudience)
 		if err != nil {
-			log.Error("JWT初期化エラー", "error", err)
+			log.Error("CF Access初期化エラー", "error", err)
 			os.Exit(1)
 		}
 		ticketStore := auth.NewTicketStore(1 * time.Minute)
-		authHandler = handler.NewAuth(adminUser, adminPass, jwtService, ticketStore)
-		log.Info("認証有効", "user", adminUser)
+		authHandler = handler.NewAuth(cfAccess, ticketStore)
+		log.Info("CF Access認証有効", "teamDomain", cfTeamDomain)
 	} else {
-		log.Info("認証無効（ADMIN_USER/ADMIN_PASSWORD未設定）")
+		log.Info("認証無効（CF_ACCESS_TEAM_DOMAIN/CF_ACCESS_AUDIENCE未設定）")
 	}
 
 	router := server.NewRouter(log, entryStore, syncService, projector, authHandler)

@@ -42,3 +42,40 @@ resource "cloudflare_dns_record" "blog" {
   proxied = true
   ttl     = 1
 }
+
+# --- Cloudflare Access ---
+
+resource "cloudflare_zero_trust_access_identity_provider" "google" {
+  account_id = var.cloudflare_account_id
+  name       = "Google"
+  type       = "google"
+
+  config = {
+    client_id     = var.google_oauth_client_id
+    client_secret = var.google_oauth_client_secret
+  }
+}
+
+resource "cloudflare_zero_trust_access_application" "blog_admin" {
+  zone_id          = var.cloudflare_zone_id
+  name             = "crdt-blog-admin"
+  domain           = "${var.domain}/api/admin"
+  type             = "self_hosted"
+  session_duration = "24h"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google.id]
+
+  policies = [
+    {
+      name       = "Allow admin"
+      decision   = "allow"
+      precedence = 1
+      include = [
+        {
+          email = {
+            email = var.admin_email
+          }
+        }
+      ]
+    }
+  ]
+}
