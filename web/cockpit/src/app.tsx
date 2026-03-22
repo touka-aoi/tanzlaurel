@@ -4,9 +4,11 @@ import { EntryPage } from "./pages/entry-page";
 import { LoginPage } from "./pages/login-page";
 import { LogoutPage } from "./pages/logout-page";
 import { useAuth } from "./hooks/use-auth";
+import { useTheme } from "./hooks/use-theme";
 
 function Header() {
   const { authenticated } = useAuth();
+  const { theme, toggle } = useTheme();
 
   return (
     <header class="sticky top-0 z-10 h-14 flex items-center justify-between px-4 border-b border-ink-border bg-ink-bg">
@@ -18,6 +20,14 @@ function Header() {
           <span class="w-2 h-2 rounded-full bg-green-400" />
         )}
       </a>
+      <button
+        type="button"
+        onClick={toggle}
+        class="font-mono text-[10px] text-ink-muted hover:text-ink-sub transition-colors"
+        aria-label="テーマ切替"
+      >
+        {theme === "dark" ? "light" : "dark"}
+      </button>
     </header>
   );
 }

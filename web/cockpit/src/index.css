@@ -1,14 +1,41 @@
 @import "tailwindcss";
 
+/* Theme variables — dark (default) and light */
+:root {
+  --ink-bg: #0A0908;
+  --ink-surface: #111009;
+  --ink-border: #2A2518;
+  --ink-text: #E2D9C8;
+  --ink-sub: #A89880;
+  --ink-muted: #5C5240;
+  --ink-accent: #C84040;
+  --ink-accent-pale: rgba(200, 64, 64, 0.12);
+  --ink-code-bg: #1A1710;
+  --ink-heading-sub: #D4C8B0;
+}
+
+[data-theme="light"] {
+  --ink-bg: #EDE8DF;
+  --ink-surface: #F5F0E8;
+  --ink-border: #C8BFA8;
+  --ink-text: #1C1810;
+  --ink-sub: #4A4538;
+  --ink-muted: #8C8272;
+  --ink-accent: #8B2020;
+  --ink-accent-pale: #F0DADA;
+  --ink-code-bg: #F5F0E8;
+  --ink-heading-sub: #4A4538;
+}
+
 @theme {
-  --color-ink-bg: #0A0908;
-  --color-ink-surface: #111009;
-  --color-ink-border: #2A2518;
-  --color-ink-text: #E2D9C8;
-  --color-ink-sub: #A89880;
-  --color-ink-muted: #5C5240;
-  --color-accent: #C84040;
-  --color-accent-pale: rgba(200, 64, 64, 0.12);
+  --color-ink-bg: var(--ink-bg);
+  --color-ink-surface: var(--ink-surface);
+  --color-ink-border: var(--ink-border);
+  --color-ink-text: var(--ink-text);
+  --color-ink-sub: var(--ink-sub);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--ink-accent);
+  --color-accent-pale: var(--ink-accent-pale);
 
   --font-serif: 'Georgia', 'Times New Roman', serif;
   --font-mono: 'Courier New', 'Courier', monospace;
@@ -23,8 +50,8 @@
   }
 
   html, body {
-    background-color: var(--color-ink-bg);
-    color: var(--color-ink-text);
+    background-color: var(--ink-bg);
+    color: var(--ink-text);
     font-family: var(--font-serif);
     font-size: 16px;
     line-height: 1.8;
@@ -37,14 +64,14 @@
 
   /* markdown prose styling */
   .prose-glass {
-    color: var(--color-ink-text);
+    color: var(--ink-text);
     line-height: 1.8;
     font-family: var(--font-serif);
   }
   .prose-glass h1 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--color-ink-text);
+    color: var(--ink-text);
     letter-spacing: -0.02em;
     line-height: 1.2;
     margin-top: 1.5rem;
@@ -52,7 +79,7 @@
   }
   .prose-glass h2 {
     font-size: 20px;
-    color: #D4C8B0;
+    color: var(--ink-heading-sub);
     line-height: 1.3;
     margin-top: 1.25rem;
     margin-bottom: 0.5rem;
@@ -60,7 +87,7 @@
   .prose-glass h3 {
     font-size: 18px;
     font-weight: 600;
-    color: #D4C8B0;
+    color: var(--ink-heading-sub);
     margin-top: 1rem;
     margin-bottom: 0.5rem;
   }
@@ -68,21 +95,21 @@
     margin: 0.5rem 0;
   }
   .prose-glass a {
-    color: var(--color-accent);
+    color: var(--ink-accent);
     text-decoration: underline;
   }
   .prose-glass code {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--color-ink-sub);
-    background: #1A1710;
-    border: 1px solid var(--color-ink-border);
+    color: var(--ink-sub);
+    background: var(--ink-code-bg);
+    border: 1px solid var(--ink-border);
     border-radius: 3px;
     padding: 2px 8px;
   }
   .prose-glass pre {
-    background: #1A1710;
-    border: 1px solid var(--color-ink-border);
+    background: var(--ink-code-bg);
+    border: 1px solid var(--ink-border);
     border-radius: 4px;
     padding: 1rem;
     margin: 0.75rem 0;
@@ -104,10 +131,10 @@
     margin: 0.5rem 0;
   }
   .prose-glass blockquote {
-    border-left: 2px solid var(--color-ink-border);
+    border-left: 2px solid var(--ink-border);
     padding-left: 1rem;
     margin: 0.75rem 0;
-    color: var(--color-ink-sub);
+    color: var(--ink-sub);
     font-style: italic;
   }
 }
@@ -147,4 +174,14 @@
   pointer-events: none;
   z-index: 1;
   animation: noise-pulse 4s ease-in-out infinite;
+}
+
+/* Light theme texture: grey scanlines, static, no drift */
+[data-theme="light"] .texture-overlay::before {
+  background: repeating-linear-gradient(180deg, transparent, transparent 3px, rgba(28, 24, 16, 0.03) 3px, rgba(28, 24, 16, 0.03) 4px);
+  animation: none;
+}
+[data-theme="light"] .texture-overlay::after {
+  opacity: 0.045;
+  animation: none;
 }
