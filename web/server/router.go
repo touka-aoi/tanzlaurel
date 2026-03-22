@@ -33,7 +33,7 @@ func NewRouter(
 	if authHandler != nil {
 		deleteHandler := csrf.Handler(authHandler.CFAccessMiddleware(handler.RequireAuth(http.HandlerFunc(entry.Delete))))
 		mux.Handle("POST /api/admin/entries/{id}/delete", deleteHandler)
-		mux.HandleFunc("POST /api/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusFound)
 		})
 	}

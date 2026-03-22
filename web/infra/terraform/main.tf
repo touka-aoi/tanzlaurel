@@ -79,3 +79,27 @@ resource "cloudflare_zero_trust_access_application" "blog_admin" {
     }
   ]
 }
+
+resource "cloudflare_zero_trust_access_application" "blog_login" {
+  zone_id          = var.cloudflare_zone_id
+  name             = "crdt-blog-login"
+  domain           = "${var.domain}/login"
+  type             = "self_hosted"
+  session_duration = "24h"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.google.id]
+
+  policies = [
+    {
+      name       = "Allow admin"
+      decision   = "allow"
+      precedence = 1
+      include = [
+        {
+          email = {
+            email = var.admin_email
+          }
+        }
+      ]
+    }
+  ]
+}
