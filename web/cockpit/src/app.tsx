@@ -1,8 +1,6 @@
 import { LocationProvider, Router } from "preact-iso";
 import { FeedPage } from "./pages/feed-page";
 import { EntryPage } from "./pages/entry-page";
-import { LoginPage } from "./pages/login-page";
-import { LogoutPage } from "./pages/logout-page";
 import { useAuth } from "./hooks/use-auth";
 import { useTheme } from "./hooks/use-theme";
 
@@ -40,8 +38,6 @@ export function App() {
         <Router>
           <FeedPage path="/" />
           <EntryPage path="/entries/:id" />
-          <LoginPage path="/login" />
-          <LogoutPage path="/logout" />
         </Router>
       </div>
     </LocationProvider>
