@@ -108,7 +108,8 @@ export function FeedCard({
   const PREVIEW_LINES = 6;
   const contentRef = useRef<HTMLDivElement>(null);
   const [isClamped, setIsClamped] = useState(false);
-  const date = new Date(entry.created_at).toLocaleDateString("ja-JP");
+  const d = new Date(entry.created_at);
+  const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
   const liveText = isEditing || isExpanded ? text : entry.content;
 
   useEffect(() => {
@@ -118,7 +119,7 @@ export function FeedCard({
   }, [liveText, isEditing, isExpanded]);
 
   return (
-    <article class="py-3 border-b border-[#1A1710]">
+    <article class="py-3 border-b border-ink-border">
       {/* 日付バー */}
       <div class="flex items-center gap-2 mb-1">
         {isEditing && (
@@ -126,9 +127,9 @@ export function FeedCard({
             class={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-red-400"}`}
           />
         )}
-        <span class="ml-auto font-mono text-[9px] text-ink-muted">{date}</span>
+        <span class="font-mono text-[9px] text-ink-text">{date}</span>
         {onDelete && (
-          <button
+          <button style="margin-left: auto"
             type="button"
             class="font-mono text-[9px] leading-none text-accent/50 hover:text-accent transition-colors border border-accent/20 hover:border-accent/50 rounded px-1 py-0.5"
             onClick={(e: Event) => {
@@ -173,7 +174,7 @@ export function FeedCard({
         class={!isEditing ? "cursor-pointer" : ""}
       >
         {isEditing ? (
-          <div ref={editContainerRef} class="border border-ink-border rounded p-3 mt-1">
+          <div ref={editContainerRef} class="mt-1">
             <textarea
               ref={textareaRef}
               onInput={handleInput}
@@ -183,9 +184,9 @@ export function FeedCard({
                   onStopEdit();
                 }
               }}
-              class="w-full bg-transparent border-none text-base text-ink-text font-serif leading-relaxed resize-none focus:outline-none min-h-[80px]"
+              class="w-full bg-transparent text-base text-ink-text font-serif leading-relaxed placeholder:text-ink-muted resize-none focus:outline-none min-h-[80px]"
             />
-            <div class="flex items-center justify-end border-t border-ink-border px-2 py-1">
+            <div class="flex items-center justify-end py-1">
               <button
                 type="button"
                 onClick={(e: Event) => {

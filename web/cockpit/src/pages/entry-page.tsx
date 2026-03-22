@@ -128,7 +128,7 @@ export function EntryPage(_props: { path?: string }) {
       {/* 記事本文 */}
       <div onClick={handleContentClick}>
         {isEditing ? (
-          <div ref={editContainerRef} class="border border-ink-border rounded p-3">
+          <div ref={editContainerRef}>
             <textarea
               ref={textareaRef}
               onInput={handleInput}
@@ -138,9 +138,9 @@ export function EntryPage(_props: { path?: string }) {
                   handleStopEdit();
                 }
               }}
-              class="w-full bg-transparent border-none text-base text-ink-text font-serif leading-relaxed resize-none focus:outline-none min-h-[200px]"
+              class="w-full bg-transparent text-base text-ink-text font-serif leading-relaxed placeholder:text-ink-muted resize-none focus:outline-none min-h-[200px]"
             />
-            <div class="flex items-center justify-end border-t border-ink-border px-2 py-1">
+            <div class="flex items-center justify-end py-1">
               <button
                 type="button"
                 onClick={(e: Event) => {

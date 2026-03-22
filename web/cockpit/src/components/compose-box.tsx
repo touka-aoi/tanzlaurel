@@ -45,7 +45,7 @@ export function ComposeBox({ onSubmit }: ComposeBoxProps) {
   const canSubmit = text.trim().length > 0 && !submitting;
 
   return (
-    <div class="w-full bg-ink-surface border border-ink-border rounded overflow-hidden focus-within:border-ink-muted transition-colors">
+    <div class="w-full">
       <textarea
         ref={textareaRef}
         value={text}
@@ -54,9 +54,9 @@ export function ComposeBox({ onSubmit }: ComposeBoxProps) {
         placeholder="本文を入力..."
         rows={3}
         disabled={submitting}
-        class="w-full bg-transparent px-4 py-3 text-base text-ink-text font-serif placeholder:text-ink-muted resize-none focus:outline-none disabled:opacity-50"
+        class="w-full bg-transparent text-base text-ink-text font-serif placeholder:text-ink-muted resize-none focus:outline-none disabled:opacity-50"
       />
-      <div class="flex items-center justify-end border-t border-ink-border px-2 py-1">
+      <div class="flex items-center justify-end py-1">
         <button
           type="button"
           onClick={handleSubmit}
