@@ -1,4 +1,4 @@
-.PHONY: server client dev stop restart
+.PHONY: server client dev stop restart deploy
 
 SERVER_PID := server/.pid
 CLIENT_PID := cockpit/.pid
@@ -38,3 +38,7 @@ stop:
 
 # 再起動
 restart: stop dev
+
+# デプロイ（dotenvxで秘密情報を注入してAnsible実行）
+deploy:
+	@cd infra/ansible && dotenvx run -f ../../.env.production -- ansible-playbook -i inventory.yml playbook.yml
