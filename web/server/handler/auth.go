@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"flourish/server/auth"
@@ -50,16 +51,22 @@ func (a *Auth) CFAccessMiddleware(next http.Handler) http.Handler {
 		authenticated := false
 
 		tokenStr := r.Header.Get("Cf-Access-Jwt-Assertion")
+		source := "header"
 		if tokenStr == "" {
 			if cookie, err := r.Cookie("CF_Authorization"); err == nil {
 				tokenStr = cookie.Value
+				source = "cookie"
 			}
 		}
 
 		if tokenStr != "" {
 			if _, err := a.cfAccess.Verify(tokenStr); err == nil {
 				authenticated = true
+			} else {
+				slog.Debug("CF Access JWT検証失敗", "source", source, "error", err, "path", r.URL.Path)
 			}
+		} else {
+			slog.Debug("CF Access トークンなし", "path", r.URL.Path)
 		}
 
 		ctx := context.WithValue(r.Context(), authContextKey, authenticated)
