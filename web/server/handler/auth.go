@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"flourish/server/auth"
 )
@@ -63,7 +65,21 @@ func (a *Auth) CFAccessMiddleware(next http.Handler) http.Handler {
 			if _, err := a.cfAccess.Verify(tokenStr); err == nil {
 				authenticated = true
 			} else {
-				slog.Warn("CF Access JWT検証失敗", "source", source, "error", err, "path", r.URL.Path)
+				// JWTペイロードからaudを抽出してログ
+			aud := "unknown"
+			parts := strings.Split(tokenStr, ".")
+			if len(parts) >= 2 {
+				if payload, e := base64.RawURLEncoding.DecodeString(parts[1]); e == nil {
+					var claims map[string]any
+					if json.Unmarshal(payload, &claims) == nil {
+						if a, ok := claims["aud"]; ok {
+							audBytes, _ := json.Marshal(a)
+							aud = string(audBytes)
+						}
+					}
+				}
+			}
+			slog.Warn("CF Access JWT検証失敗", "source", source, "error", err, "path", r.URL.Path, "tokenAud", aud)
 			}
 		} else {
 			slog.Warn("CF Access トークンなし", "path", r.URL.Path)
