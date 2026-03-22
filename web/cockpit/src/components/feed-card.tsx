@@ -73,6 +73,18 @@ export function FeedCard({
     }
   }, [isEditing]);
 
+  // リモート変更時のみtextareaを同期（ローカル入力時はDOMが既に正しい）
+  useEffect(() => {
+    if (textareaRef.current && textareaRef.current.value !== text) {
+      const { selectionStart, selectionEnd } = textareaRef.current;
+      textareaRef.current.value = text;
+      textareaRef.current.selectionStart = selectionStart;
+      textareaRef.current.selectionEnd = selectionEnd;
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    }
+  }, [text]);
+
   const handleInput = useCallback(
     (e: Event) => {
       const target = e.target as HTMLTextAreaElement;
@@ -166,7 +178,6 @@ export function FeedCard({
           <div ref={editContainerRef}>
             <textarea
               ref={textareaRef}
-              value={text}
               onInput={handleInput}
               onKeyDown={(e: KeyboardEvent) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
