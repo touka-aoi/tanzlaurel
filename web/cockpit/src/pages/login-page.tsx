@@ -25,31 +25,31 @@ export function LoginPage(_props: { path?: string }) {
 
   return (
     <div class="max-w-sm mx-auto px-4 py-16">
-      <h2 class="text-xl font-semibold text-white/80 mb-6">ログイン</h2>
+      <h2 class="font-serif text-xl font-semibold text-ink-text mb-6">ログイン</h2>
       <form onSubmit={handleSubmit} class="space-y-4">
         <div>
-          <label class="block text-sm text-white/50 mb-1">ユーザー名</label>
+          <label class="block font-mono text-[11px] text-ink-muted mb-1">ユーザー名</label>
           <input
             type="text"
             value={username}
             onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
-            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white/80 focus:outline-none focus:border-blue-400/50"
+            class="w-full px-3 py-2 bg-ink-surface border border-ink-border rounded text-ink-text font-serif focus:outline-none focus:border-ink-muted"
             autoFocus
           />
         </div>
         <div>
-          <label class="block text-sm text-white/50 mb-1">パスワード</label>
+          <label class="block font-mono text-[11px] text-ink-muted mb-1">パスワード</label>
           <input
             type="password"
             value={password}
             onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
-            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white/80 focus:outline-none focus:border-blue-400/50"
+            class="w-full px-3 py-2 bg-ink-surface border border-ink-border rounded text-ink-text font-serif focus:outline-none focus:border-ink-muted"
           />
         </div>
-        {error && <p class="text-red-400 text-sm">{error}</p>}
+        {error && <p class="font-mono text-[11px] text-accent">{error}</p>}
         <button
           type="submit"
-          class="w-full py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/20 rounded-lg text-blue-300 text-sm transition-colors"
+          class="w-full py-2 bg-accent-pale hover:bg-accent/20 border border-accent/30 rounded text-accent font-mono text-[11px] tracking-wider transition-colors"
         >
           ログイン
         </button>

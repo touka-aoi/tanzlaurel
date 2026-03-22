@@ -103,7 +103,7 @@ export function EntryPage(_props: { path?: string }) {
   if (loading) {
     return (
       <div class="flex justify-center py-16">
-        <div class="text-white/30 text-sm">読み込み中...</div>
+        <div class="font-mono text-[11px] text-ink-muted">読み込み中...</div>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export function EntryPage(_props: { path?: string }) {
       <nav class="flex items-center gap-3 mb-8">
         <a
           href="/"
-          class="text-sm text-white/40 hover:text-white/70 transition-colors"
+          class="font-mono text-[10px] text-ink-muted hover:text-ink-sub transition-colors"
         >
           &larr; フィードに戻る
         </a>
@@ -138,16 +138,16 @@ export function EntryPage(_props: { path?: string }) {
                   handleStopEdit();
                 }
               }}
-              class="w-full bg-transparent border-none text-base text-white/80 leading-relaxed resize-none focus:outline-none min-h-[200px]"
+              class="w-full bg-transparent text-base text-ink-text font-serif leading-relaxed placeholder:text-ink-muted resize-none focus:outline-none min-h-[200px]"
             />
-            <div class="flex items-center justify-end border-t border-white/[0.15] px-2 py-1">
+            <div class="flex items-center justify-end py-1">
               <button
                 type="button"
                 onClick={(e: Event) => {
                   e.stopPropagation();
                   handleStopEdit();
                 }}
-                class="flex items-center justify-center w-8 h-8 rounded text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                class="flex items-center justify-center w-8 h-8 rounded text-ink-muted hover:text-ink-sub transition-colors cursor-pointer"
                 aria-label="編集を完了する"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -145,6 +146,9 @@ func (s *EntryStore) List(_ context.Context) ([]domain.EntryListItem, error) {
 			items = append(items, entry.ToListItem())
 		}
 	}
+	slices.SortFunc(items, func(a, b domain.EntryListItem) int {
+		return b.CreatedAt.Compare(a.CreatedAt)
+	})
 	return items, nil
 }
 

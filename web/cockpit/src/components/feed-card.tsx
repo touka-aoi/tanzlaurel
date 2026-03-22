@@ -108,7 +108,8 @@ export function FeedCard({
   const PREVIEW_LINES = 6;
   const contentRef = useRef<HTMLDivElement>(null);
   const [isClamped, setIsClamped] = useState(false);
-  const date = new Date(entry.created_at).toLocaleDateString("ja-JP");
+  const d = new Date(entry.created_at);
+  const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
   const liveText = isEditing || isExpanded ? text : entry.content;
 
   useEffect(() => {
@@ -118,19 +119,19 @@ export function FeedCard({
   }, [liveText, isEditing, isExpanded]);
 
   return (
-    <div class="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] rounded-lg shadow-lg overflow-hidden">
+    <article class="py-3 border-b border-ink-border">
       {/* 日付バー */}
-      <div class="flex items-center gap-2 px-4 sm:px-5 pt-3 pb-1">
+      <div class="flex items-center gap-2 mb-1">
         {isEditing && (
           <span
             class={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-red-400"}`}
           />
         )}
-        <span class="ml-auto text-xs text-white/40">{date}</span>
+        <span class="font-mono text-[9px] text-ink-text">{date}</span>
         {onDelete && (
-          <button
+          <button style="margin-left: auto"
             type="button"
-            class="text-[10px] leading-none text-red-400/50 hover:text-red-400 transition-colors border border-red-400/20 hover:border-red-400/50 rounded px-1 py-0.5"
+            class="font-mono text-[9px] leading-none text-accent/50 hover:text-accent transition-colors border border-accent/20 hover:border-accent/50 rounded px-1 py-0.5"
             onClick={(e: Event) => {
               e.stopPropagation();
               setShowDeleteConfirm(true);
@@ -143,19 +144,19 @@ export function FeedCard({
 
       {/* 削除確認 */}
       {showDeleteConfirm && onDelete && (
-        <div ref={deleteConfirmRef} class="px-4 sm:px-5 py-2 border-y border-red-400/10 bg-red-500/[0.03]">
-          <p class="text-xs text-white/60 mb-2">この記事を削除しますか？</p>
+        <div ref={deleteConfirmRef} class="py-2 border-y border-accent/10 bg-accent-pale">
+          <p class="font-mono text-[11px] text-ink-sub mb-2">この記事を削除しますか？</p>
           <div class="flex justify-end gap-3">
             <button
               type="button"
-              class="text-xs px-3 py-1 text-white/50 hover:text-white/80 transition-colors"
+              class="font-mono text-[11px] px-3 py-1 text-ink-muted hover:text-ink-sub transition-colors"
               onClick={() => setShowDeleteConfirm(false)}
             >
               キャンセル
             </button>
             <button
               type="button"
-              class="text-xs px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-400/20 rounded text-red-300 transition-colors"
+              class="font-mono text-[11px] px-3 py-1 bg-accent-pale hover:bg-accent/20 border border-accent/30 rounded text-accent transition-colors"
               onClick={() => {
                 setShowDeleteConfirm(false);
                 onDelete(entry.id);
@@ -170,12 +171,10 @@ export function FeedCard({
       {/* コンテンツ */}
       <div
         onClick={handleContentClick}
-        class={`px-4 sm:px-5 pb-4 ${
-          !isEditing ? "cursor-pointer active:bg-white/[0.03]" : ""
-        }`}
+        class={!isEditing ? "cursor-pointer" : ""}
       >
         {isEditing ? (
-          <div ref={editContainerRef}>
+          <div ref={editContainerRef} class="mt-1">
             <textarea
               ref={textareaRef}
               onInput={handleInput}
@@ -185,16 +184,16 @@ export function FeedCard({
                   onStopEdit();
                 }
               }}
-              class="w-full bg-transparent border-none text-base text-white/80 leading-relaxed resize-none focus:outline-none min-h-[80px]"
+              class="w-full bg-transparent text-base text-ink-text font-serif leading-relaxed placeholder:text-ink-muted resize-none focus:outline-none min-h-[80px]"
             />
-            <div class="flex items-center justify-end border-t border-white/[0.15] px-2 py-1">
+            <div class="flex items-center justify-end py-1">
               <button
                 type="button"
                 onClick={(e: Event) => {
                   e.stopPropagation();
                   onStopEdit();
                 }}
-                class="flex items-center justify-center w-8 h-8 rounded text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                class="flex items-center justify-center w-8 h-8 rounded text-ink-muted hover:text-ink-sub transition-colors cursor-pointer"
                 aria-label="編集を完了する"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
@@ -217,10 +216,10 @@ export function FeedCard({
 
       {/* 展開/折りたたみ & 個別ページリンク */}
       {!isEditing && (isClamped || isExpanded) && (
-        <div class="flex items-center gap-3 px-4 sm:px-5 pb-3 pt-1">
+        <div class="flex items-center gap-3 pt-2">
           <button
             type="button"
-            class="text-xs text-white/30 hover:text-white/60 transition-colors"
+            class="font-mono text-[10px] text-ink-muted hover:text-ink-sub transition-colors"
             onClick={(e: Event) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
@@ -230,14 +229,13 @@ export function FeedCard({
           </button>
           <a
             href={`/entries/${entry.id}`}
-            class="text-xs text-white/30 hover:text-white/60 transition-colors"
+            class="font-mono text-[10px] text-ink-muted hover:text-ink-sub transition-colors"
             onClick={(e: Event) => e.stopPropagation()}
           >
             個別ページ &rarr;
           </a>
         </div>
       )}
-
-    </div>
+    </article>
   );
 }

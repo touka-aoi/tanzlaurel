@@ -43,32 +43,36 @@ export function FeedPage(_props: { path?: string }) {
   }, [refresh]);
 
   return (
-    <main class="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      <ComposeBox onSubmit={handleSubmit} />
+    <main class="texture-overlay min-h-screen">
+      <div class="relative z-2 max-w-2xl mx-auto px-4 py-6">
+        <ComposeBox onSubmit={handleSubmit} />
 
-      {loading ? (
-        <div class="flex justify-center py-16">
-          <div class="text-white/30 text-sm">読み込み中...</div>
-        </div>
-      ) : entries.length === 0 ? (
-        <div class="text-center py-16">
-          <p class="text-white/30 text-sm">
-            まだ記事がありません。上の入力欄から投稿してみましょう。
-          </p>
-        </div>
-      ) : (
-        entries.map((entry) => (
-          <FeedCard
-            key={entry.id}
-            entry={entry}
-            isEditing={editingId === entry.id}
-            onStartEdit={handleStartEdit}
-            onStopEdit={handleStopEdit}
-            onDelete={authenticated ? deleteEntry : undefined}
-            getWsTicket={authenticated ? getWsTicket : undefined}
-          />
-        ))
-      )}
+        {loading ? (
+          <div class="flex justify-center py-16">
+            <div class="font-mono text-[11px] text-ink-muted">読み込み中...</div>
+          </div>
+        ) : entries.length === 0 ? (
+          <div class="text-center py-16">
+            <p class="font-mono text-[11px] text-ink-muted">
+              まだ記事がありません。上の入力欄から投稿してみましょう。
+            </p>
+          </div>
+        ) : (
+          <div class="mt-6">
+            {entries.map((entry) => (
+              <FeedCard
+                key={entry.id}
+                entry={entry}
+                isEditing={editingId === entry.id}
+                onStartEdit={handleStartEdit}
+                onStopEdit={handleStopEdit}
+                onDelete={authenticated ? deleteEntry : undefined}
+                getWsTicket={authenticated ? getWsTicket : undefined}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
