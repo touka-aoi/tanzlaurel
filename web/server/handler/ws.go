@@ -10,9 +10,14 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"flourish/server/application"
 )
+
+var wsTracer = otel.Tracer("flourish/ws")
 
 // WS はWebSocketハンドラー。
 type WS struct {
@@ -119,6 +124,15 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscriber, msg IncomingMessage, subscribedEntries *[]uuid.UUID, authenticated bool) {
+	ctx, span := wsTracer.Start(ctx, "WS.handleOp",
+		trace.WithAttributes(
+			attribute.String("ws.msg_type", string(msg.Type)),
+			attribute.String("ws.entry_id", msg.EntryID),
+			attribute.Int("ws.op_type", msg.OpType),
+		),
+	)
+	defer span.End()
+
 	entryID, err := uuid.Parse(msg.EntryID)
 	if err != nil {
 		h.writeError(conn, &msg.RequestID, "error:invalid_op", "Invalid Operation")
@@ -188,6 +202,14 @@ func (h *WS) handleOp(ctx context.Context, conn *websocket.Conn, sub *wsSubscrib
 }
 
 func (h *WS) handleSyncRequest(ctx context.Context, conn *websocket.Conn, sub *wsSubscriber, msg IncomingMessage, subscribedEntries *[]uuid.UUID) {
+	ctx, span := wsTracer.Start(ctx, "WS.handleSyncRequest",
+		trace.WithAttributes(
+			attribute.String("ws.entry_id", msg.EntryID),
+			attribute.Int64("ws.last_server_seq", msg.LastServerSeq),
+		),
+	)
+	defer span.End()
+
 	entryID, err := uuid.Parse(msg.EntryID)
 	if err != nil {
 		h.writeError(conn, &msg.RequestID, "error:invalid_op", "Invalid Operation")
