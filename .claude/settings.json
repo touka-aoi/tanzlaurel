@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/go-post-edit.sh",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/go-post-edit.sh",
             "timeout": 120,
             "statusMessage": "Running Go linters..."
           }
