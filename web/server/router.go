@@ -36,6 +36,7 @@ func NewRouter(
 		mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusFound)
 		})
+		mux.HandleFunc("GET /logout", authHandler.Logout)
 	}
 	mux.HandleFunc("GET /api/entries/{id}", entry.Get)
 	mux.Handle("GET /api/ws", ws)

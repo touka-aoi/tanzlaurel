@@ -68,7 +68,7 @@ func main() {
 			os.Exit(1)
 		}
 		ticketStore := auth.NewTicketStore(1 * time.Minute)
-		authHandler = handler.NewAuth(cfAccess, ticketStore)
+		authHandler = handler.NewAuth(cfAccess, ticketStore, cfTeamDomain)
 		log.Info("CF Access認証有効", "teamDomain", cfTeamDomain)
 	} else {
 		log.Info("認証無効（CF_ACCESS_TEAM_DOMAIN/CF_ACCESS_AUDIENCE未設定）")
