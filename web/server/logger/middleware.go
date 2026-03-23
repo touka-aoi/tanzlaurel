@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type contextKey string
@@ -33,25 +34,38 @@ func HTTPMiddleware(log *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			reqID := uuid.New().String()
 
-			log.Info("request received",
+			// トレースIDをログに付与
+			attrs := []any{
 				"http.request.method", r.Method,
 				"url.path", r.URL.Path,
 				"client.address", r.RemoteAddr,
 				"user_agent.original", r.UserAgent(),
 				"http.request.body.size", r.ContentLength,
 				"requestId", reqID,
-			)
+			}
+			if spanCtx := trace.SpanFromContext(r.Context()).SpanContext(); spanCtx.HasTraceID() {
+				attrs = append(attrs, "trace_id", spanCtx.TraceID().String())
+				attrs = append(attrs, "span_id", spanCtx.SpanID().String())
+			}
+
+			log.InfoContext(r.Context(), "request received", attrs...)
 
 			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			next.ServeHTTP(rw, r)
 
-			log.Info("response sent",
+			respAttrs := []any{
 				"http.request.method", r.Method,
 				"url.path", r.URL.Path,
 				"http.response.status_code", rw.statusCode,
 				"http.server.request.duration", time.Since(start).Seconds(),
 				"requestId", reqID,
-			)
+			}
+			if spanCtx := trace.SpanFromContext(r.Context()).SpanContext(); spanCtx.HasTraceID() {
+				respAttrs = append(respAttrs, "trace_id", spanCtx.TraceID().String())
+				respAttrs = append(respAttrs, "span_id", spanCtx.SpanID().String())
+			}
+
+			log.InfoContext(r.Context(), "response sent", respAttrs...)
 		})
 	}
 }

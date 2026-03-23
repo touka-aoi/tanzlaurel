@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -26,38 +27,84 @@ type Config struct {
 	Environment string
 }
 
-// New はプラン仕様に準拠したslogロガーを作成する。
-func New(cfg Config) *slog.Logger {
+// NewHandler はJSON出力用のslog.Handlerを返す。
+func NewHandler(cfg Config) slog.Handler {
 	level := parseLevel(cfg.Level)
 
 	opts := &slog.HandlerOptions{
 		Level: level,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			// キー名の変更
 			switch a.Key {
 			case slog.TimeKey:
 				a.Key = "timestamp"
 			case slog.MessageKey:
 				a.Key = "message"
 			case slog.LevelKey:
-				// カスタムレベル名
 				if lvl, ok := a.Value.Any().(slog.Level); ok {
 					a.Value = slog.StringValue(levelName(lvl))
 				}
 			}
-			// WARN以上でソース情報を出力
 			return a
 		},
 		AddSource: level.Level() <= LevelWarn,
 	}
 
-	handler := slog.NewJSONHandler(os.Stdout, opts)
+	return slog.NewJSONHandler(os.Stdout, opts)
+}
 
-	return slog.New(handler).With(
+// New はプラン仕様に準拠したslogロガーを作成する。
+func New(cfg Config) *slog.Logger {
+	return slog.New(NewHandler(cfg)).With(
 		"service.name", cfg.ServiceName,
 		"service.version", cfg.Version,
 		"deployment.environment", cfg.Environment,
 	)
+}
+
+// FanoutHandler は複数のslog.Handlerにログを転送する。
+type FanoutHandler struct {
+	handlers []slog.Handler
+}
+
+// NewFanoutHandler は複数ハンドラーへのファンアウトハンドラーを作成する。
+func NewFanoutHandler(handlers ...slog.Handler) *FanoutHandler {
+	return &FanoutHandler{handlers: handlers}
+}
+
+func (h *FanoutHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, handler := range h.handlers {
+		if handler.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *FanoutHandler) Handle(ctx context.Context, record slog.Record) error {
+	for _, handler := range h.handlers {
+		if handler.Enabled(ctx, record.Level) {
+			if err := handler.Handle(ctx, record); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (h *FanoutHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	handlers := make([]slog.Handler, len(h.handlers))
+	for i, handler := range h.handlers {
+		handlers[i] = handler.WithAttrs(attrs)
+	}
+	return NewFanoutHandler(handlers...)
+}
+
+func (h *FanoutHandler) WithGroup(name string) slog.Handler {
+	handlers := make([]slog.Handler, len(h.handlers))
+	for i, handler := range h.handlers {
+		handlers[i] = handler.WithGroup(name)
+	}
+	return NewFanoutHandler(handlers...)
 }
 
 // PrintBanner は起動時バナーを標準出力に出力する。

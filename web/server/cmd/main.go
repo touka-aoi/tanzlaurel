@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"flourish/server/auth"
 	"flourish/server/handler"
 	"flourish/server/logger"
+	appotel "flourish/server/otel"
 )
 
 func main() {
@@ -25,7 +27,37 @@ func main() {
 		Environment: envOrDefault("ENV", "development"),
 	}
 
-	log := logger.New(cfg)
+	// OTel初期化（OTEL_EXPORTER_OTLP_ENDPOINT が設定されている場合のみ有効）
+	var otelProviders *appotel.Providers
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otlpEndpoint != "" {
+		providers, err := appotel.Setup(context.Background(), appotel.Config{
+			ServiceName:    cfg.ServiceName,
+			ServiceVersion: cfg.Version,
+			Environment:    cfg.Environment,
+			OTLPEndpoint:   otlpEndpoint,
+		})
+		if err != nil {
+			slog.Error("OTel初期化エラー", "error", err)
+			os.Exit(1)
+		}
+		otelProviders = providers
+		defer otelProviders.Shutdown(context.Background())
+	}
+
+	// ロガー作成（OTelが有効ならブリッジハンドラーを追加）
+	var log *slog.Logger
+	if otelProviders != nil {
+		localHandler := logger.NewHandler(cfg)
+		otelHandler := appotel.NewSlogHandler(otelProviders.LoggerProvider)
+		log = slog.New(logger.NewFanoutHandler(localHandler, otelHandler)).With(
+			"service.name", cfg.ServiceName,
+			"service.version", cfg.Version,
+			"deployment.environment", cfg.Environment,
+		)
+	} else {
+		log = logger.New(cfg)
+	}
 	logger.PrintBanner(cfg, addr, "")
 
 	dataDir := envOrDefault("DATA_DIR", "data")

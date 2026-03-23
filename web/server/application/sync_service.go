@@ -5,9 +5,14 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"flourish/server/domain"
 )
+
+var tracer = otel.Tracer("flourish/sync")
 
 // Subscriber はsyncメッセージの受信者。
 type Subscriber interface {
@@ -71,6 +76,15 @@ func (s *SyncService) Unsubscribe(entryID uuid.UUID, sub Subscriber) {
 
 // HandleOp はopを受信し、重複検知→永続化→ACK返却する。broadcastは別途Broadcastを呼ぶ。
 func (s *SyncService) HandleOp(ctx context.Context, entryID, siteID, requestID uuid.UUID, payload []byte) (AckMessage, error) {
+	ctx, span := tracer.Start(ctx, "SyncService.HandleOp",
+		trace.WithAttributes(
+			attribute.String("osot.entry_id", entryID.String()),
+			attribute.String("osot.site_id", siteID.String()),
+			attribute.String("osot.request_id", requestID.String()),
+		),
+	)
+	defer span.End()
+
 	event := domain.Event{
 		EntryID:   entryID,
 		RequestID: requestID,
@@ -81,8 +95,14 @@ func (s *SyncService) HandleOp(ctx context.Context, entryID, siteID, requestID u
 
 	serverSeq, err := s.eventStore.Append(ctx, event)
 	if err != nil {
+		span.RecordError(err)
 		return AckMessage{}, err
 	}
+
+	span.SetAttributes(
+		attribute.Int64("osot.server_seq", serverSeq),
+		attribute.Bool("osot.duplicate", serverSeq == 0),
+	)
 
 	return AckMessage{
 		RequestID: requestID,
@@ -104,8 +124,17 @@ func (s *SyncService) Broadcast(entryID uuid.UUID, msg SyncMessage) {
 
 // GetDiff は指定されたserver_seq以降の差分を取得する。
 func (s *SyncService) GetDiff(ctx context.Context, entryID uuid.UUID, afterSeq int64) (SyncMessage, error) {
+	ctx, span := tracer.Start(ctx, "SyncService.GetDiff",
+		trace.WithAttributes(
+			attribute.String("osot.entry_id", entryID.String()),
+			attribute.Int64("osot.after_seq", afterSeq),
+		),
+	)
+	defer span.End()
+
 	events, err := s.eventStore.ListAfter(ctx, entryID, afterSeq)
 	if err != nil {
+		span.RecordError(err)
 		return SyncMessage{}, err
 	}
 
@@ -120,8 +149,14 @@ func (s *SyncService) GetDiff(ctx context.Context, entryID uuid.UUID, afterSeq i
 
 	maxSeq, err := s.eventStore.MaxServerSeq(ctx, entryID)
 	if err != nil {
+		span.RecordError(err)
 		return SyncMessage{}, err
 	}
+
+	span.SetAttributes(
+		attribute.Int("osot.ops_count", len(ops)),
+		attribute.Int64("osot.latest_server_seq", maxSeq),
+	)
 
 	return SyncMessage{
 		EntryID:         entryID,

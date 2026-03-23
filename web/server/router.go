@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	"flourish/server/application"
 	"flourish/server/domain"
 	"flourish/server/handler"
@@ -53,5 +55,6 @@ func NewRouter(
 		})).ServeHTTP)
 	}
 
-	return logger.HTTPMiddleware(log)(mux)
+	// ミドルウェアチェーン: otelhttp(トレース) → HTTPMiddleware(ログ) → mux
+	return otelhttp.NewHandler(logger.HTTPMiddleware(log)(mux), "crdt-blog")
 }
