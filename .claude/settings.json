@@ -17,5 +17,20 @@
       "Read(./build)"
     ]
   },
-  "plansDirectory": "./.claude/plans"
+  "plansDirectory": "./.claude/plans",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/go-post-edit.sh",
+            "timeout": 120,
+            "statusMessage": "Running Go linters..."
+          }
+        ]
+      }
+    ]
+  }
 }
