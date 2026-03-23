@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"withered/server/domain/protocol"
 )
 
 // HeartbeatService は定期的にpingメッセージを送信する死活監視サービスです。
@@ -33,7 +35,7 @@ func (h *HeartbeatService) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			pingMsg := EncodePingMessage(h.session.ID())
+			pingMsg := protocol.EncodePing()
 			select {
 			case h.writeCh <- pingMsg:
 				slog.DebugContext(ctx, "heartbeat: ping sent", "sessionID", h.session.ID())

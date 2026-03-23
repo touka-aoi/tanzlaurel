@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"withered/server/domain/protocol"
 )
 
 type RoomID [16]byte
@@ -95,12 +97,7 @@ func (r *Room) Run(ctx context.Context) error {
 			for {
 				select {
 				case msg := <-msgCh:
-					// Roomの責務に関する処理
 					r.HandleMessage(ctx, msg)
-					// アプリケーションロジックが担当する
-					if err := r.application.HandleMessage(ctx, msg.SessionID, msg.Data); err != nil {
-						slog.WarnContext(ctx, "room handle message failed", "err", err)
-					}
 				default:
 					break RECEIVE_LOOP
 				}
@@ -116,35 +113,44 @@ func (r *Room) Run(ctx context.Context) error {
 				}
 			}
 			// ApplicationのTick()を呼び出し、戻り値があればブロードキャスト
-			if data := r.application.Tick(ctx); data != nil {
-				if bytes, ok := data.([]byte); ok {
-					r.Broadcast(ctx, bytes)
-				}
+			if data, err := r.application.Tick(ctx); err != nil {
+				slog.WarnContext(ctx, "room tick failed", "err", err)
+			} else if data != nil {
+				r.Broadcast(ctx, data)
 			}
 		}
 	}
 }
 
-// HandleMessage はPubSub経由で受信したメッセージを処理し、
-// Control/JoinならsessionsにセッションIDを追加、Control/Leaveなら削除する。
+// HandleMessage はPubSub経由で受信したメッセージを処理する。
+// msg.Data はTransportHeaderを除いたペイロード（RoomID + RoomHeader + AppPayload）。
+// Join/Leaveならsessions管理、AppDataならapplication.HandleMessageに委譲する。
 func (r *Room) HandleMessage(ctx context.Context, msg Message) {
-	if len(msg.Data) < HeaderSize+PayloadHeaderSize {
-		return
-	}
-	payloadHeader, err := ParsePayloadHeader(msg.Data[HeaderSize:])
+	// RoomIDをスキップ（session_endpointで既にパース済みだが、Roomにはペイロード全体が渡される）
+	_, n1, err := protocol.ParseRoomID(msg.Data)
 	if err != nil {
+		slog.WarnContext(ctx, "room: failed to parse room ID", "err", err)
 		return
 	}
-	if payloadHeader.DataType != DataTypeControl {
+
+	roomMsgType, n2, err := protocol.ParseRoomHeader(msg.Data[n1:])
+	if err != nil {
+		slog.WarnContext(ctx, "room: failed to parse room header", "err", err)
 		return
 	}
-	switch ControlSubType(payloadHeader.SubType) {
-	case ControlSubTypeJoin:
+
+	switch roomMsgType {
+	case protocol.RoomMsgTypeJoin:
 		r.sessions[msg.SessionID] = struct{}{}
 		slog.InfoContext(ctx, "room: session added", "roomID", r.ID, "sessionID", msg.SessionID)
-	case ControlSubTypeLeave:
+	case protocol.RoomMsgTypeLeave:
 		delete(r.sessions, msg.SessionID)
 		slog.InfoContext(ctx, "room: session removed", "roomID", r.ID, "sessionID", msg.SessionID)
+	case protocol.RoomMsgTypeAppData:
+		appPayload := msg.Data[n1+n2:]
+		if err := r.application.HandleMessage(ctx, msg.SessionID, appPayload); err != nil {
+			slog.WarnContext(ctx, "room: application handle message failed", "err", err)
+		}
 	}
 }
 

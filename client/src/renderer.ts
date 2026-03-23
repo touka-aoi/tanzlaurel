@@ -1,10 +1,10 @@
 // Canvas 描画
 
 import type { Actor, Bullet } from "./protocol";
-import { sessionIdEquals, isAlive, isBot } from "./protocol";
+import { isAlive, isBot } from "./protocol";
 
 const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
+const CANVAS_HEIGHT = 800;
 const SCALE = 8; // 1ワールドユニット = 8px
 const ACTOR_RADIUS = 8;
 
@@ -39,12 +39,10 @@ export class Renderer {
     this.ctx.strokeStyle = "#E8E8E8";
     this.ctx.lineWidth = 1;
     for (let i = 10; i < 100; i += 10) {
-      // 縦線
       this.ctx.beginPath();
       this.ctx.moveTo(i * SCALE, 0);
       this.ctx.lineTo(i * SCALE, 100 * SCALE);
       this.ctx.stroke();
-      // 横線
       this.ctx.beginPath();
       this.ctx.moveTo(0, i * SCALE);
       this.ctx.lineTo(100 * SCALE, i * SCALE);
@@ -52,9 +50,9 @@ export class Renderer {
     }
   }
 
-  drawActors(actors: Actor[], mySessionId: Uint8Array | null): void {
+  drawActors(actors: Actor[], myEntityId: number | null): void {
     for (const actor of actors) {
-      const isMe = sessionIdEquals(mySessionId, actor.sessionId);
+      const isMe = myEntityId !== null && actor.entityId === myEntityId;
       this.drawActor(actor, isMe);
     }
   }
@@ -63,15 +61,13 @@ export class Renderer {
     const screenX = actor.x * SCALE;
     const screenY = actor.y * SCALE;
     const alive = isAlive(actor.state);
-    const bot = isBot(actor.state);
+    const bot = isBot(actor.tag);
 
-    // 死亡時は半透明
     const prevAlpha = this.ctx.globalAlpha;
     if (!alive) {
       this.ctx.globalAlpha = 0.3;
     }
 
-    // 色: 自分=緑, Bot=赤, 他人=青
     let fillColor: string;
     let strokeColor: string;
     if (isMe) {
@@ -85,7 +81,6 @@ export class Renderer {
       strokeColor = "#2563eb";
     }
 
-    // アクター円
     this.ctx.beginPath();
     this.ctx.arc(screenX, screenY, ACTOR_RADIUS, 0, Math.PI * 2);
     this.ctx.fillStyle = fillColor;
@@ -94,7 +89,6 @@ export class Renderer {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // HPバー
     if (alive) {
       const barWidth = ACTOR_RADIUS * 2.5;
       const barHeight = 3;
@@ -102,12 +96,11 @@ export class Renderer {
       const barY = screenY - ACTOR_RADIUS - 8;
       const hpRatio = actor.hp / 100;
 
-      // 背景(灰)
       this.ctx.fillStyle = "#374151";
       this.ctx.fillRect(barX, barY, barWidth, barHeight);
 
-      // HP(緑→赤)
-      const hpColor = hpRatio > 0.5 ? "#4ade80" : hpRatio > 0.25 ? "#facc15" : "#f87171";
+      const hpColor =
+        hpRatio > 0.5 ? "#4ade80" : hpRatio > 0.25 ? "#facc15" : "#f87171";
       this.ctx.fillStyle = hpColor;
       this.ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
     }
@@ -115,23 +108,27 @@ export class Renderer {
     this.ctx.globalAlpha = prevAlpha;
   }
 
-  drawBullets(bullets: Bullet[], mySessionId: Uint8Array | null): void {
+  drawBullets(bullets: Bullet[], myEntityId: number | null): void {
     const BULLET_RADIUS = 5;
     for (const bullet of bullets) {
       const screenX = bullet.x * SCALE;
       const screenY = bullet.y * SCALE;
-      const isMine = sessionIdEquals(mySessionId, bullet.ownerSessionId);
+      const isMine = myEntityId !== null && bullet.ownerId === myEntityId;
       this.ctx.beginPath();
       this.ctx.arc(screenX, screenY, BULLET_RADIUS, 0, Math.PI * 2);
-      this.ctx.fillStyle = isMine ? "#facc15" : "#ef4444"; // 自分=黄, 敵=赤
+      this.ctx.fillStyle = isMine ? "#facc15" : "#ef4444";
       this.ctx.fill();
     }
   }
 
-  render(actors: Actor[], bullets: Bullet[], mySessionId: Uint8Array | null): void {
+  render(
+    actors: Actor[],
+    bullets: Bullet[],
+    myEntityId: number | null
+  ): void {
     this.clear();
     this.drawMap();
-    this.drawBullets(bullets, mySessionId);
-    this.drawActors(actors, mySessionId);
+    this.drawBullets(bullets, myEntityId);
+    this.drawActors(actors, myEntityId);
   }
 }

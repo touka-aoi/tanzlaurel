@@ -1,45 +1,35 @@
-package domain
+package protocol
 
 import (
 	"encoding/binary"
 	"errors"
 	"math"
-	"time"
 )
 
 // バイトオーダー: リトルエンディアン
 var byteOrder = binary.LittleEndian
 
-const (
-	HeaderSize        = 25
-	PayloadHeaderSize = 2
-	JoinPayloadSize   = 16
-)
+const PayloadHeaderSize = 2
 
-// Header はメッセージヘッダー (25バイト)
+// PayloadHeader はペイロードヘッダー (2バイト)
 //
-//	version    u8      (1)
-//	sessionID  [16]byte (16)
-//	seq        u16     (2)
-//	length     u16     (2)  - ペイロード長
-//	timestamp  u32     (4)
-type Header struct {
-	Version   uint8
-	SessionID [16]byte
-	Seq       uint16
-	Length    uint16
-	Timestamp uint32
+//	datatype  u8 (1)
+//	subtype   u8 (1)
+type PayloadHeader struct {
+	DataType DataType
+	SubType  uint8
 }
 
 // DataType はメッセージの種別
 type DataType uint8
 
 const (
-	DataTypeInput    DataType = 1
-	DataTypeActor2D  DataType = 2
-	DataTypeVoice    DataType = 3
-	DataTypeControl  DataType = 4
-	DataTypeActor3D  DataType = 5
+	DataTypeInput DataType = iota
+	DataTypeActor2D
+	DataTypeVoice
+	DataTypeControl
+	DataTypeActor3D
+	DataTypeSnapshot
 )
 
 // ActorSubType はactorメッセージのサブタイプ
@@ -51,61 +41,18 @@ const (
 	ActorSubTypeDespawn ActorSubType = 3
 )
 
-// ControlSubType はcontrolメッセージのサブタイプ
-type ControlSubType uint8
-
-const (
-	ControlSubTypeJoin   ControlSubType = 1
-	ControlSubTypeLeave  ControlSubType = 2
-	ControlSubTypeKick   ControlSubType = 3
-	ControlSubTypePing   ControlSubType = 4
-	ControlSubTypePong   ControlSubType = 5
-	ControlSubTypeError  ControlSubType = 6
-	ControlSubTypeAssign ControlSubType = 7
-)
-
-// PayloadHeader はペイロードヘッダー (2バイト)
-//
-//	datatype  u8 (1)
-//	subtype   u8 (1)
-type PayloadHeader struct {
-	DataType DataType
-	SubType  uint8
-}
-
+// エラー定義
 var (
-	ErrInvalidHeaderSize  = errors.New("invalid header size")
-	ErrInvalidPayloadSize = errors.New("invalid payload size")
+	ErrInvalidPayloadSize       = errors.New("invalid payload size")
+	ErrInvalidPosition2DData    = errors.New("invalid position2d data: expected 8 bytes")
+	ErrInvalidPositionSize      = errors.New("invalid position size")
+	ErrInvalidBoneDataSize      = errors.New("invalid bone data size")
+	ErrInvalidActor2DSpawnSize  = errors.New("invalid actor2d spawn size")
+	ErrInvalidActor2DUpdateSize = errors.New("invalid actor2d update size")
+	ErrInvalidActor3DSpawnSize  = errors.New("invalid actor3d spawn size")
+	ErrInvalidActor3DUpdateSize = errors.New("invalid actor3d update size")
+	ErrInvalidInputPayloadSize  = errors.New("invalid input payload size")
 )
-
-// ParseHeader はバイト列からHeaderをパースする
-func ParseHeader(data []byte) (*Header, error) {
-	if len(data) < HeaderSize {
-		return nil, ErrInvalidHeaderSize
-	}
-
-	var sessionID [16]byte
-	copy(sessionID[:], data[1:17])
-
-	return &Header{
-		Version:   data[0],
-		SessionID: sessionID,
-		Seq:       byteOrder.Uint16(data[17:19]),
-		Length:    byteOrder.Uint16(data[19:21]),
-		Timestamp: byteOrder.Uint32(data[21:25]),
-	}, nil
-}
-
-// Encode はHeaderをバイト列にエンコードする
-func (h *Header) Encode() []byte {
-	data := make([]byte, HeaderSize)
-	data[0] = h.Version
-	copy(data[1:17], h.SessionID[:])
-	byteOrder.PutUint16(data[17:19], h.Seq)
-	byteOrder.PutUint16(data[19:21], h.Length)
-	byteOrder.PutUint32(data[21:25], h.Timestamp)
-	return data
-}
 
 // ParsePayloadHeader はバイト列からPayloadHeaderをパースする
 func ParsePayloadHeader(data []byte) (*PayloadHeader, error) {
@@ -125,97 +72,6 @@ func (p *PayloadHeader) Encode() []byte {
 	data[0] = byte(p.DataType)
 	data[1] = byte(p.SubType)
 	return data
-}
-
-// EncodeAssignMessage はセッションID通知メッセージをエンコードする
-// クライアントに自分のセッションIDを通知するために使用
-func EncodeAssignMessage(sessionID SessionID) []byte {
-	header := Header{
-		Version:   1,
-		SessionID: sessionID.Bytes(),
-		Seq:       0,
-		Length:    PayloadHeaderSize,
-		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
-	}
-	payloadHeader := PayloadHeader{
-		DataType: DataTypeControl,
-		SubType:  uint8(ControlSubTypeAssign),
-	}
-
-	data := make([]byte, HeaderSize+PayloadHeaderSize)
-	copy(data[:HeaderSize], header.Encode())
-	copy(data[HeaderSize:], payloadHeader.Encode())
-	return data
-}
-
-// EncodeLeaveMessage はルーム離脱メッセージをエンコードする
-// 異常切断時にclose()からRoom離脱を通知するために使用
-func EncodeLeaveMessage(sessionID SessionID) []byte {
-	header := Header{
-		Version:   1,
-		SessionID: sessionID.Bytes(),
-		Seq:       0,
-		Length:    PayloadHeaderSize,
-		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
-	}
-	payloadHeader := PayloadHeader{
-		DataType: DataTypeControl,
-		SubType:  uint8(ControlSubTypeLeave),
-	}
-
-	data := make([]byte, HeaderSize+PayloadHeaderSize)
-	copy(data[:HeaderSize], header.Encode())
-	copy(data[HeaderSize:], payloadHeader.Encode())
-	return data
-}
-
-// EncodePingMessage はPingメッセージをエンコードする
-// クライアントに死活確認のpingを送信するために使用
-func EncodePingMessage(sessionID SessionID) []byte {
-	header := Header{
-		Version:   1,
-		SessionID: sessionID.Bytes(),
-		Seq:       0,
-		Length:    PayloadHeaderSize,
-		Timestamp: uint32(time.Now().UnixMilli() & 0xFFFFFFFF),
-	}
-	payloadHeader := PayloadHeader{
-		DataType: DataTypeControl,
-		SubType:  uint8(ControlSubTypePing),
-	}
-
-	data := make([]byte, HeaderSize+PayloadHeaderSize)
-	copy(data[:HeaderSize], header.Encode())
-	copy(data[HeaderSize:], payloadHeader.Encode())
-	return data
-}
-
-// JoinPayload はルーム参加メッセージのペイロード (16バイト)
-//
-//	roomID  [16]byte  - ルームID (UUID)
-type JoinPayload struct {
-	RoomID RoomID
-}
-
-var ErrInvalidJoinPayloadSize = errors.New("invalid join payload size")
-
-// ParseJoinPayload はバイト列からJoinPayloadをパースする
-func ParseJoinPayload(data []byte) (*JoinPayload, error) {
-	if len(data) < JoinPayloadSize {
-		return nil, ErrInvalidJoinPayloadSize
-	}
-
-	var roomID RoomID
-	copy(roomID[:], data[:JoinPayloadSize])
-
-	return &JoinPayload{
-		RoomID: roomID,
-	}, nil
-}
-
-// Encode はJoinPayloadをバイト列にエンコードする
-func (j *JoinPayload) Encode() []byte {
-	return j.RoomID[:]
 }
 
 // サイズ定数
@@ -306,17 +162,11 @@ type InputPayload struct {
 	KeyMask uint32
 }
 
-// エラー定義
-var (
-	ErrInvalidPosition2DData    = errors.New("invalid position2d data: expected 8 bytes")
-	ErrInvalidPositionSize      = errors.New("invalid position size")
-	ErrInvalidBoneDataSize      = errors.New("invalid bone data size")
-	ErrInvalidActor2DSpawnSize  = errors.New("invalid actor2d spawn size")
-	ErrInvalidActor2DUpdateSize = errors.New("invalid actor2d update size")
-	ErrInvalidActor3DSpawnSize  = errors.New("invalid actor3d spawn size")
-	ErrInvalidActor3DUpdateSize = errors.New("invalid actor3d update size")
-	ErrInvalidInputPayloadSize  = errors.New("invalid input payload size")
-)
+// InputPayloadSize はInputPayloadのサイズ
+const InputPayloadSize = 4
+
+// BitmaskSize はビットマスクのサイズ（16バイト = 128ボーン対応）
+const BitmaskSize = 16
 
 // ParsePosition2D はバイト列からPosition2Dをパースする
 func ParsePosition2D(data []byte) (*Position2D, error) {
@@ -457,9 +307,6 @@ func (a *Actor3DSpawn) Encode() []byte {
 	return a.Position.Encode()
 }
 
-// BitmaskSize はビットマスクのサイズ（16バイト = 128ボーン対応）
-const BitmaskSize = 16
-
 // ParseActor3DUpdate はバイト列からActor3DUpdateをパースする
 func ParseActor3DUpdate(data []byte) (*Actor3DUpdate, error) {
 	minSize := BitmaskSize + PositionSize
@@ -527,9 +374,6 @@ func countSetBits(bitmask [16]byte) int {
 	}
 	return count
 }
-
-// InputPayloadSize はInputPayloadのサイズ
-const InputPayloadSize = 4
 
 // ParseInputPayload はバイト列からInputPayloadをパースする
 func ParseInputPayload(data []byte) (*InputPayload, error) {

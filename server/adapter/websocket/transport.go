@@ -3,8 +3,9 @@ package adapterwebsocker
 import (
 	"context"
 
-	"github.com/coder/websocket"
 	"withered/server/domain"
+
+	"github.com/coder/websocket"
 )
 
 type wsTransport struct {
@@ -27,6 +28,9 @@ func (t *wsTransport) Write(ctx context.Context, data []byte) error {
 	return t.conn.Write(ctx, websocket.MessageBinary, data)
 }
 
+// エラーがあるならエラーを定義しておきたい
 func (t *wsTransport) Close(code int32, reason string) error {
+	// Close(err error) error
+	// if err != nil そうじゃなかったら正常切断にする
 	return t.conn.Close(websocket.StatusCode(code), reason)
 }
