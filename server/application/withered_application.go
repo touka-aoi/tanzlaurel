@@ -10,16 +10,14 @@ import (
 
 // WitheredApplication は各メッセージタイプを処理するApplication
 type WitheredApplication struct {
-	world         *ShootingWorld
-	static        *Static
-	scheduler     *Scheduler[*ShootingWorld]
-	codec         Codec[*ShootingWorld]
-	pendingInputs *PendingInput
+	world     *ShootingWorld
+	scheduler *Scheduler[*ShootingWorld]
+	codec     Codec[*ShootingWorld]
 }
 
 func NewWitheredApplication() *WitheredApplication {
 	gameMap := NewMap(100, 100, 1.0)
-	field := NewField(gameMap)
+	static := NewField(gameMap)
 
 	phases := []Phase{PhaseSimulation, PhaseNetwork}
 	scheduler, err := NewScheduler[*ShootingWorld](phases,
@@ -36,29 +34,40 @@ func NewWitheredApplication() *WitheredApplication {
 	}
 
 	return &WitheredApplication{
-		world: &ShootingWorld{
-			Entities:  make(map[EntityID]struct{}),
-			Position:  make(map[EntityID]Position),
-			Health:    make(map[EntityID]Health),
-			LifeState: make(map[EntityID]LifeState),
-			Velocity:  make(map[EntityID]Velocity),
-			TTL:       make(map[EntityID]uint16),
-			Owner:     make(map[EntityID]EntityID),
-			Tag:       make(map[EntityID]Tag),
-		},
-		static:        field,
-		scheduler:     scheduler,
-		codec:         WitheredCodec{},
-		pendingInputs: &PendingInput{},
+		world:     NewShootingWorld(static),
+		scheduler: scheduler,
+		codec:     WitheredCodec{},
 	}
 }
 
-func (app *WitheredApplication) OnInput(packet []byte) {
-	app.pendingInputs.Push(packet)
+// OnJoin はセッション参加時にプレイヤーEntityを生成する。
+func (app *WitheredApplication) OnJoin(ctx context.Context, sessionID domain.SessionID) {
+	entityID := app.world.SpawnActor(sessionID, TagPlayer)
+	slog.InfoContext(ctx, "player entity spawned",
+		"sessionID", sessionID,
+		"entityID", entityID,
+	)
+}
+
+// OnLeave はセッション離脱時にプレイヤーEntityを削除する。
+func (app *WitheredApplication) OnLeave(ctx context.Context, sessionID domain.SessionID) {
+	entityID, ok := app.world.SessionToEntity[sessionID]
+	if !ok {
+		slog.WarnContext(ctx, "OnLeave: no entity for session", "sessionID", sessionID)
+		return
+	}
+	app.world.RemoveEntity(entityID)
+	slog.InfoContext(ctx, "player entity removed",
+		"sessionID", sessionID,
+		"entityID", entityID,
+	)
 }
 
 func (app *WitheredApplication) Tick(ctx context.Context) ([]byte, error) {
 	app.scheduler.RunTick(ctx, app.world)
+	if len(app.world.Entities) == 0 {
+		return nil, nil
+	}
 	b, err := app.codec.EncodeSnapshot(ctx, app.world)
 	if err != nil {
 		return nil, err
@@ -78,9 +87,7 @@ const (
 const PlayerSpeed float32 = 1.0
 
 // HandleMessage はAppPayloadを受け取り、アプリケーション固有のプロトコルに従って処理する。
-// data はRoom層がRoomHeaderを除去した後の純粋なAppPayload。
 func (app *WitheredApplication) HandleMessage(ctx context.Context, sessionID domain.SessionID, data []byte) error {
-	// PayloadHeaderをパース（アプリケーション固有プロトコル）
 	payloadHeader, err := protocol.ParsePayloadHeader(data)
 	if err != nil {
 		return err
@@ -104,12 +111,16 @@ func (app *WitheredApplication) handleInput(ctx context.Context, sessionID domai
 		return err
 	}
 
-	slog.DebugContext(ctx, "handleInput",
-		"sessionID", sessionID,
-		"keyMask", input.KeyMask,
-	)
+	entityID, ok := app.world.SessionToEntity[sessionID]
+	if !ok {
+		slog.WarnContext(ctx, "handleInput: no entity for session", "sessionID", sessionID)
+		return nil
+	}
 
-	app.pendingInputs.Push(data)
+	app.world.PendingInputs.Push(InputEntry{
+		EntityID: entityID,
+		KeyMask:  input.KeyMask,
+	})
 
 	return nil
 }
@@ -160,18 +171,4 @@ func (app *WitheredApplication) handleActor2D(ctx context.Context, sessionID dom
 	}
 
 	return nil
-}
-
-// encodeActorBroadcastMessage はアクターデータにPayloadHeaderを付与してAppPayloadを構築する。
-// Room層がRoomMessage(AppData)としてラップして送信する。
-func encodeActorBroadcastMessage(payload []byte) []byte {
-	payloadHeader := protocol.PayloadHeader{
-		DataType: protocol.DataTypeActor2D,
-		SubType:  uint8(protocol.ActorSubTypeUpdate),
-	}
-
-	data := make([]byte, protocol.PayloadHeaderSize+len(payload))
-	copy(data[:protocol.PayloadHeaderSize], payloadHeader.Encode())
-	copy(data[protocol.PayloadHeaderSize:], payload)
-	return data
 }

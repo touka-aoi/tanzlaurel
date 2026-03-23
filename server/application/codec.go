@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"math"
-	"sort"
+	"slices"
 
 	"withered/server/application/protocol"
 )
@@ -38,7 +38,7 @@ func encodeWitheredSnapshot(world *ShootingWorld) []byte {
 	for id := range world.Entities {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 
 	buf := make([]byte, 0, 256)
 	buf = binary.LittleEndian.AppendUint16(buf, uint16(len(ids)))

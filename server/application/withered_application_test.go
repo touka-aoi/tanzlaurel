@@ -65,7 +65,7 @@ func TestWitheredApplication_HandleMessage_InvalidPayload(t *testing.T) {
 	}
 }
 
-func TestWitheredApplication_Tick(t *testing.T) {
+func TestWitheredApplication_Tick_Empty(t *testing.T) {
 	app := NewWitheredApplication()
 	ctx := context.Background()
 
@@ -73,7 +73,23 @@ func TestWitheredApplication_Tick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Tick failed: %v", err)
 	}
+	if result != nil {
+		t.Error("expected nil result from empty world Tick")
+	}
+}
+
+func TestWitheredApplication_Tick_WithEntity(t *testing.T) {
+	app := NewWitheredApplication()
+	ctx := context.Background()
+
+	sessionID := domain.NewSessionID()
+	app.OnJoin(ctx, sessionID)
+
+	result, err := app.Tick(ctx)
+	if err != nil {
+		t.Fatalf("Tick failed: %v", err)
+	}
 	if result == nil {
-		t.Error("expected non-nil result from Tick")
+		t.Error("expected non-nil result from Tick with entity")
 	}
 }

@@ -1,17 +1,19 @@
 package application
 
+type InputEntry struct {
+	EntityID EntityID
+	KeyMask  uint32
+}
+
 type PendingInput struct {
-	queue [][]byte
+	queue []InputEntry
 }
 
-func (p *PendingInput) Push(input []byte) {
-	// コピーして所有権を確保
-	copied := make([]byte, len(input))
-	copy(copied, input)
-	p.queue = append(p.queue, copied)
+func (p *PendingInput) Push(entry InputEntry) {
+	p.queue = append(p.queue, entry)
 }
 
-func (p *PendingInput) Drain() [][]byte {
+func (p *PendingInput) Drain() []InputEntry {
 	flushed := p.queue
 	p.queue = nil
 	return flushed
