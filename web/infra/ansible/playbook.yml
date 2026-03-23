@@ -1,0 +1,14 @@
+---
+- name: CRDTブログ デプロイ
+  hosts: all
+  become: true
+  vars:
+    app_repo: "https://github.com/touka-aoi/parallel-vs-single.git"
+    app_branch: "main"
+    app_dir: "/opt/crdt-blog"
+    dotenv_private_key: "{{ lookup('env', 'DOTENV_PRIVATE_KEY_PRODUCTION') }}"
+    tunnel_token: "{{ lookup('env', 'TUNNEL_TOKEN') }}"
+
+  roles:
+    - docker
+    - app

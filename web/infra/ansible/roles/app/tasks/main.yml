@@ -1,0 +1,40 @@
+---
+- name: アプリディレクトリを作成
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: リポジトリをclone/pull
+  ansible.builtin.git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_dir }}"
+    version: "{{ app_branch }}"
+    force: true
+  become_user: "{{ ansible_user }}"
+
+- name: .env.keysを配置
+  ansible.builtin.copy:
+    dest: "{{ app_dir }}/web/.env.keys"
+    content: |
+      DOTENV_PRIVATE_KEY_PRODUCTION={{ dotenv_private_key }}
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: .envを配置（docker-compose用）
+  ansible.builtin.copy:
+    dest: "{{ app_dir }}/web/.env"
+    content: |
+      TUNNEL_TOKEN={{ tunnel_token }}
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: docker compose up
+  ansible.builtin.shell:
+    cmd: sg docker -c "docker compose up -d --build"
+    chdir: "{{ app_dir }}/web"
+  become_user: "{{ ansible_user }}"
