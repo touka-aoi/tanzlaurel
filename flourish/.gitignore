@@ -1,4 +1,7 @@
 .env
+node_modules/
+dist/
+.vite/
 /testdata/
 /server/data/
 /server/bin/
