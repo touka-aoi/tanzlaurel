@@ -25,10 +25,11 @@ func (id RoomID) String() string {
 var ErrRoomBusy = errors.New("room control channel is full")
 
 type Room struct {
-	ID       RoomID
-	sessions map[SessionID]struct{}
+	ID          RoomID
+	registry    SessionRegistry
+	broadcaster Broadcaster
 
-	pubsub      PubSub
+	pubsub      PubSub      // Run()のSubscribe/Unsubscribeで使用
 	application Application // 外部からアプリケーションロジックを注入できる
 
 	sendCh chan roomSend
@@ -36,27 +37,16 @@ type Room struct {
 	tickInterval time.Duration
 }
 
-func NewRoom(id RoomID, pubsub PubSub, application Application) *Room {
+func NewRoom(id RoomID, pubsub PubSub, broadcaster Broadcaster, registry SessionRegistry, application Application) *Room {
 	return &Room{
 		ID:           id,
-		sessions:     make(map[SessionID]struct{}),
+		registry:     registry,
+		broadcaster:  broadcaster,
 		pubsub:       pubsub,
 		application:  application,
 		sendCh:       make(chan roomSend, 1024),
 		tickInterval: time.Second / 60,
 	}
-}
-
-func (r *Room) Broadcast(ctx context.Context, data []byte) {
-	for sessionID := range r.sessions {
-		topic := Topic("session:" + sessionID.String())
-		r.pubsub.Publish(ctx, topic, Message{Data: data})
-	}
-}
-
-func (r *Room) SendTo(ctx context.Context, sessionID SessionID, data []byte) {
-	topic := Topic("session:" + sessionID.String())
-	r.pubsub.Publish(ctx, topic, Message{Data: data})
 }
 
 func (r *Room) EnqueueBroadcast(ctx context.Context, data []byte) error {
@@ -116,7 +106,7 @@ func (r *Room) Run(ctx context.Context) error {
 			if data, err := r.application.Tick(ctx); err != nil {
 				slog.WarnContext(ctx, "room tick failed", "err", err)
 			} else if data != nil {
-				r.Broadcast(ctx, data)
+				r.broadcaster.Broadcast(ctx, data)
 			}
 		}
 	}
@@ -141,10 +131,10 @@ func (r *Room) HandleMessage(ctx context.Context, msg Message) {
 
 	switch roomMsgType {
 	case protocol.RoomMsgTypeJoin:
-		r.sessions[msg.SessionID] = struct{}{}
+		r.registry.Add(msg.SessionID)
 		slog.InfoContext(ctx, "room: session added", "roomID", r.ID, "sessionID", msg.SessionID)
 	case protocol.RoomMsgTypeLeave:
-		delete(r.sessions, msg.SessionID)
+		r.registry.Remove(msg.SessionID)
 		slog.InfoContext(ctx, "room: session removed", "roomID", r.ID, "sessionID", msg.SessionID)
 	case protocol.RoomMsgTypeAppData:
 		appPayload := msg.Data[n1+n2:]
@@ -157,9 +147,9 @@ func (r *Room) HandleMessage(ctx context.Context, msg Message) {
 func (r *Room) handleSendMessage(ctx context.Context, msg roomSend) {
 	switch msg.kind {
 	case roomSendBroadcast:
-		r.Broadcast(ctx, msg.data)
+		r.broadcaster.Broadcast(ctx, msg.data)
 	case roomSendTo:
-		r.SendTo(ctx, msg.sessionID, msg.data)
+		r.broadcaster.SendTo(ctx, msg.sessionID, msg.data)
 	default:
 	}
 }

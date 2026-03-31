@@ -37,7 +37,9 @@ func main() {
 
 	// Roomを作成して起動
 	app := application.NewWitheredApplication()
-	room := domain.NewRoom(defaultRoomID, pubsub, app)
+	registry := domain.NewLocalSessionRegistry()
+	broadcaster := domain.NewPubSubBroadcaster(registry, pubsub)
+	room := domain.NewRoom(defaultRoomID, pubsub, broadcaster, registry, app)
 	go func() {
 		if err := room.Run(ctx); err != nil {
 			slog.ErrorContext(ctx, "room error", "err", err)
