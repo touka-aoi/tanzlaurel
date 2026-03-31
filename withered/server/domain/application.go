@@ -7,4 +7,6 @@ type Application interface {
 	// パース結果をApplication外部に漏らさない設計。
 	HandleMessage(ctx context.Context, sessionID SessionID, data []byte) error
 	Tick(ctx context.Context) ([]byte, error)
+	OnJoin(ctx context.Context, sessionID SessionID)
+	OnLeave(ctx context.Context, sessionID SessionID)
 }

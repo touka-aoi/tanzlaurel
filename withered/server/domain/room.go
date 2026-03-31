@@ -132,9 +132,11 @@ func (r *Room) HandleMessage(ctx context.Context, msg Message) {
 	switch roomMsgType {
 	case protocol.RoomMsgTypeJoin:
 		r.registry.Add(msg.SessionID)
+		r.application.OnJoin(ctx, msg.SessionID)
 		slog.InfoContext(ctx, "room: session added", "roomID", r.ID, "sessionID", msg.SessionID)
 	case protocol.RoomMsgTypeLeave:
 		r.registry.Remove(msg.SessionID)
+		r.application.OnLeave(ctx, msg.SessionID)
 		slog.InfoContext(ctx, "room: session removed", "roomID", r.ID, "sessionID", msg.SessionID)
 	case protocol.RoomMsgTypeAppData:
 		appPayload := msg.Data[n1+n2:]
