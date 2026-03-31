@@ -206,6 +206,72 @@ Internet → Cloudflare Tunnel → nginx(:80) → app(:8080)
 
 ---
 
+## 2026-03-31〜04-01: Roomの責務分離と1万人同時接続に向けた設計・負荷テスト
+
+### 背景
+
+Roomの設計に違和感があり、将来1万人同時接続（メタバース基盤）を見据えてアーキテクチャを見直した。Roomが「セッション管理」「配信」「ゲームループ」の3責務を持っており、Gateway分散時のボトルネックになる構造だった。
+
+### 懸念1: Roomの責務が大きすぎる
+
+**問題**: Roomがsessions map管理、Broadcast、60FPS tickループを全て担当。コンポーネントとしてApplication/Room/Matchingが分離されていない。
+
+**解決**: SessionRegistry（セッション管理）とBroadcaster（配信ロジック）をインターフェースとして分離し、Roomをゲームループ専任にリファクタ。将来PubSubをNATSに差し替えるだけでプロセス分離可能な設計とした。
+
+### 懸念2: 1万人接続時のTick計算量
+
+**問題**: AutoShootSystemがO(N²)の全探索。1万人で1億回/tickとなり16msに収まらない。
+
+**解決**: Uniform Grid（空間インデックス）の導入で O(N×K) に削減する方針。100×100マップをセルサイズ5で20×20=400セルに分割。近傍検索はO(K)。実装は負荷テスト後に実施予定。
+
+### 懸念3: 1万人接続時のBroadcast帯域
+
+**問題**: 全EntityのSnapshotを全員に60fps送信すると120GB/s。現実的でない。
+
+**解決**: LOD（Level of Detail）配信を設計。セルのチェビシェフ距離でLODレベルを決定し、距離に応じて配信頻度とデータ量を削減。Entity単位の距離計算不要。帯域は約1/8に削減見込み。
+
+### 懸念4: ゲームステートの持ち方
+
+**問題**: 1万人の位置情報等をどこに保存するか。メモリだけでは不足するのでは。
+
+**解決**: 計算の結果、1万人×44bytes=440KB、弾含めても3MB程度でメモリは問題なし。ボトルネックは「保存」ではなく「計算」と「配信」。揮発ステート（位置等）はメモリ、永続ステート（アバター等、将来）はDB。tickループ内でDBアクセスはしない。
+
+### 懸念5: トランスポート選定
+
+**問題**: WebSocketはTCPベースでHoLブロッキングがある。位置情報等は古いパケットを捨てたい。
+
+**解決**: WebTransportを将来のトランスポートとして選定。unreliable datagram（位置情報）とreliable stream（Join/Leave等）の使い分け。既存プロトコルがQUIC varint形式を採用済みで親和性が高い。
+
+### 懸念6: 耐障害性
+
+**問題**: Game Serverが死んだらステートが消える。
+
+**解決**: シューティングゲームの揮発ステート（位置・弾）は消えても再接続で復帰可能。メタバースの永続データ（アバター・インベントリ）はDBに保存し、tickループ外で定期的に書き戻す設計。Raftは60fps tickには不向き。まず「死んだら再接続」で割り切り、将来Active-Standby（決定的シミュレーション）を検討。
+
+### 実装した変更
+
+1. **SessionRegistry** (`server/domain/session_registry.go`) - セッション管理をRoomから分離
+2. **Broadcaster** (`server/domain/broadcaster.go`) - 配信ロジックをRoomから分離
+3. **Room リファクタ** (`server/domain/room.go`) - registry/broadcaster委譲、OnJoin/OnLeave呼び出し追加
+4. **Applicationインターフェース** (`server/domain/application.go`) - OnJoin/OnLeave追加
+5. **Botロードテスト** (`server/cmd/bot/main.go`) - 1万体接続テスト用Bot実装
+6. **room_events.go** - 未使用のroomCtrl型を削除
+7. **main.go** - ログレベルをWarnに変更、新コンポーネントのワイヤリング
+
+### 負荷テスト結果（暫定）
+
+- 100体: 問題なし
+- 1000体: 問題なし
+- 1600体前後: Bot側が一斉にconnection reset。Snapshotの帯域が原因と推定
+- **次のステップ**: Broadcast頻度の削減（60fps→20fps）、その後Grid + LOD導入
+
+### 関連ドキュメント
+
+- `withered/Future_docs.md` - 1万人同時接続アーキテクチャ設計
+- `withered/docs/Plans/room-separation.md` - Room分離プラン
+
+---
+
 ## TODO
 
 | # | タスク | 備考 |
