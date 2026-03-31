@@ -3,5 +3,5 @@ go.work
 AGENTS.md
 .serena/
 touka/
-/bot
+bot
 .claude/skills/playwright-cli/
